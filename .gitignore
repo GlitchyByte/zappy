@@ -1,0 +1,9 @@
+# IDEs.
+.idea/
+.vscode/
+
+# Node.
+/node_modules/
+
+# Dist output.
+/dist/

@@ -1,0 +1,18 @@
+{
+  "name": "twaddle",
+  "version": "0.1.0",
+  "main": "./dist/Twaddle.js",
+  "types": "./dist/Twaddle.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [ "compression", "url-safe", "base64" ],
+  "author": "GlitchyByte",
+  "license": "Apache-2.0",
+  "description": "Lightweight library for compressing and encoding web-related text (json, urls, etc.) into a URL-safe format for efficient transport.",
+  "devDependencies": {
+    "@types/node": "^20.12.10",
+    "typescript": "^5.4.5"
+  }
+}
