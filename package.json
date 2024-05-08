@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "main": "./dist/Twaddle.js",
   "types": "./dist/Twaddle.d.ts",
+  "files": [ "/dist" ],
   "scripts": {
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
