@@ -5,6 +5,7 @@
   "license": "Apache-2.0",
   "description": "Lightweight library for compressing and encoding web-related text (json, urls, etc.) into a URL-safe format for efficient transport.",
   "keywords": [
+    "json",
     "compression",
     "url-safe",
     "base64"
@@ -16,12 +17,14 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "jest"
+    "test": "jest --coverage"
   },
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
-    "testMatch": [ "**/*.test.ts" ]
+    "testMatch": [ "**/*.test.ts" ],
+    "collectCoverage": true,
+    "coverageReporters": [ "lcov" ]
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",

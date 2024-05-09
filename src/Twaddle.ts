@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { GByteBuffer } from "./GByteBuffer"
-import { defaultContractionsSource } from "./twaddle-default-source"
+import { defaultContractionsSource } from "./twaddle-default-contraction-source"
 
 type StringGenerator = Generator<string, void, void>
 type BytesGenerator = Generator<Uint8Array, void, void>
@@ -33,16 +33,21 @@ export class Twaddle {
   private readonly textDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
   private readonly contractions = new Map<number, Map<number, Uint8Array>>()
 
+  /**
+   * Creates a Twaddle object ready to encode and decode messages.
+   *
+   * @param source The contraction source used for aiding compression. These will be overlaid
+   *          the default minimal contractions that favor json.
+   *          If source is null (and it has to be explicit by design), then only the default
+   *          minimal contraction source is used. It is highly recommended users of this class
+   *          provide their own contraction source. Using the default as a base is a good idea.
+   */
   public constructor(source: Map<number, string[]> | null) {
     if (source === null) {
-      source = defaultContractionsSource
+      source = new Map<number, string[]>()
     }
     // Compute contraction tables.
     const createLookup = (byteSize: number, list: string[]): Map<number, Uint8Array> => {
-      const lookupSizes = [ 4, 2, 1, 0 ]
-      if (!lookupSizes.includes(byteSize)) {
-        throw new Error(`Invalid lookup size: ${byteSize}`)
-      }
       const lookup = new Map<number, Uint8Array>()
       list.sort((a, b) => b.length - a.length)
       for (const entry of list) {
@@ -54,7 +59,14 @@ export class Twaddle {
       }
       return lookup
     }
-    for (const [ byteSize, list ] of source) {
+
+    // Layer contraction tables.
+    const lookupSizes = [ 4, 2, 1, 0 ]
+    for (const byteSize of lookupSizes) {
+      const list = source.get(byteSize) ?? defaultContractionsSource.get(byteSize)
+      if (list === undefined) {
+        continue
+      }
       const lookup = createLookup(byteSize, list)
       this.contractions.set(byteSize, lookup)
     }
