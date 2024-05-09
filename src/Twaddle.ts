@@ -43,8 +43,15 @@ export class Twaddle {
    *          provide their own contraction source. Using the default as a base is a good idea.
    */
   public constructor(source: Map<number, string[]> | null) {
+    const lookupSizes = [ 4, 2, 1, 0 ]
     if (source === null) {
       source = new Map<number, string[]>()
+    } else {
+      for (const key of source.keys()) {
+        if (!lookupSizes.includes(key)) {
+          throw new Error(`Invalid contraction size: ${key}`)
+        }
+      }
     }
     // Compute contraction tables.
     const createLookup = (byteSize: number, list: string[]): Map<number, Uint8Array> => {
@@ -61,7 +68,6 @@ export class Twaddle {
     }
 
     // Layer contraction tables.
-    const lookupSizes = [ 4, 2, 1, 0 ]
     for (const byteSize of lookupSizes) {
       const list = source.get(byteSize) ?? defaultContractionsSource.get(byteSize)
       if (list === undefined) {
@@ -192,6 +198,8 @@ export class Twaddle {
   /**
    * Encodes a string into a base64 string.
    *
+   * <p>Encodes with "-" and "_", and no padding.
+   *
    * @param str Original string to encode.
    * @return A base64 string.
    */
@@ -201,6 +209,8 @@ export class Twaddle {
 
   /**
    * Decodes a base64 string.
+   *
+   * <p>Expects encoding with "-" and "_", and no padding.
    *
    * @param str Base64 string.
    * @return The decoded string.
@@ -468,7 +478,7 @@ export class Twaddle {
       }
       const lookup = this.contractions.get(lookupSize)
       if (lookup === undefined) {
-        throw new Error(`Not contractions found of size: ${lookupSize}`)
+        throw new Error(`No contractions found of size: ${lookupSize}`)
       }
       const bytes = lookup.get(lookupIndex)
       if (bytes === undefined) {
