@@ -5,5 +5,8 @@
 # Node.
 /node_modules/
 
+# Test coverage.
+/coverage/
+
 # Dist output.
 /dist/
