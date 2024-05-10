@@ -121,7 +121,7 @@ describe("Twaddle", () => {
 
       test("4 byte contraction", () => {
         const twaddle = new Twaddle(null)
-        const original = ":123456789"
+        const original = "2147483647"
         const base64Encoded = twaddle.base64StringEncode(original)
         const encoded = twaddle.encode(original)
         expect(encoded).not.toBe(original)
@@ -163,9 +163,9 @@ describe("Twaddle", () => {
     })
 
     describe("Contraction layering", () => {
-      test("0-contraction unmodified", () => {
+      test("fast table unmodified", () => {
         const contractionSource = new Map<number, string[]>([
-          [1, [ "hello" ]],
+          [1, [ "hello", "hey" ]],
           [2, [ "banana smoothie" ]],
           [4, [ "ice cream" ]]
         ])
@@ -180,15 +180,15 @@ describe("Twaddle", () => {
         expect(decoded).toBe(original)
       })
 
-      test("1-contraction", () => {
+      test("layered tables", () => {
         const contractionSource = new Map<number, string[]>([
-          [1, [ "hello" ]],
+          [1, [ "hello", "hey" ]],
           [2, [ "banana smoothie" ]],
           [4, [ "ice cream" ]]
         ])
         const defaultTwaddle = new Twaddle(null)
         const twaddle = new Twaddle(contractionSource)
-        const original = '{"msg":"hello"}'
+        const original = '{"msg":"hello","dessert":"ice cream"}'
         const defaultEncoded = defaultTwaddle.encode(original)
         const encoded = twaddle.encode(original)
         expect(encoded).not.toBe(original)
@@ -197,61 +197,27 @@ describe("Twaddle", () => {
         expect(decoded).toBe(original)
       })
 
-      test("2-contraction", () => {
+      test("prevent invalid tableId", () => {
         const contractionSource = new Map<number, string[]>([
-          [1, [ "hello" ]],
+          [1, [ "hello", "hey" ]],
           [2, [ "banana smoothie" ]],
-          [4, [ "ice cream" ]]
+          [30, [ "ice cream" ]]
         ])
-        const defaultTwaddle = new Twaddle(null)
-        const twaddle = new Twaddle(contractionSource)
-        const original = '{"msg":"banana smoothie"}'
-        const defaultEncoded = defaultTwaddle.encode(original)
-        const encoded = twaddle.encode(original)
-        expect(encoded).not.toBe(original)
-        expect(encoded.length).toBeLessThan(defaultEncoded.length)
-        const decoded = twaddle.decode(encoded)
-        expect(decoded).toBe(original)
+        expect(() => {
+          // @ts-ignore
+          const twaddle = new Twaddle(contractionSource)
+        }).toThrow()
       })
 
-      test("4-contraction", () => {
+      test("prevent a contraction that is not larger than its encoding", () => {
         const contractionSource = new Map<number, string[]>([
-          [1, [ "hello" ]],
-          [2, [ "banana smoothie" ]],
-          [4, [ "ice cream" ]]
+          [11, [ "hi" ]] // Encoding would 1 control byte and 1 index byte, which is not smaller.
         ])
-        const defaultTwaddle = new Twaddle(null)
-        const twaddle = new Twaddle(contractionSource)
-        const original = '{"msg":"ice cream"}'
-        const defaultEncoded = defaultTwaddle.encode(original)
-        const encoded = twaddle.encode(original)
-        expect(encoded).not.toBe(original)
-        expect(encoded.length).toBeLessThan(defaultEncoded.length)
-        const decoded = twaddle.decode(encoded)
-        expect(decoded).toBe(original)
+        expect(() => {
+          // @ts-ignore
+          const twaddle = new Twaddle(contractionSource)
+        }).toThrow()
       })
-    })
-
-    test("prevent invalid index size contraction", () => {
-      const contractionSource = new Map<number, string[]>([
-        [1, [ "hello" ]],
-        [2, [ "banana smoothie" ]],
-        [3, [ "ice cream" ]]
-      ])
-      expect(() => {
-        // @ts-ignore
-        const twaddle = new Twaddle(contractionSource)
-      }).toThrow()
-    })
-
-    test("prevent a contraction that is not larger than its encoding", () => {
-      const contractionSource = new Map<number, string[]>([
-        [1, [ "hi" ]] // Encoding would 1 control byte and 1 index byte, which is not smaller.
-      ])
-      expect(() => {
-        // @ts-ignore
-        const twaddle = new Twaddle(contractionSource)
-      }).toThrow()
     })
   })
 })

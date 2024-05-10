@@ -37,30 +37,35 @@ export class Twaddle {
    * Creates a Twaddle object ready to encode and decode messages.
    *
    * @param source The contraction source used for aiding compression. These will be overlaid
-   *          the default minimal contractions that favor json.
+   *          on the default contractions that favors json. Whole tables are replaced in the
+   *          overlay process, not individual items within a table.
    *          If source is null (and it has to be explicit by design), then only the default
-   *          minimal contraction source is used. It is highly recommended users of this class
-   *          provide their own contraction source. Using the default as a base is a good idea.
+   *          contractions are used. It is highly recommended users of this class add their
+   *          own contractions.
    */
   public constructor(source: Map<number, string[]> | null) {
-    const lookupSizes = [ 4, 2, 1, 0 ]
     if (source === null) {
       source = new Map<number, string[]>()
     } else {
       for (const key of source.keys()) {
-        if (!lookupSizes.includes(key)) {
-          throw new Error(`Invalid contraction size: ${key}`)
+        if ((key < 0) || (key > 16)) {
+          throw new Error(`Invalid tableId: ${key}`)
         }
       }
     }
-    // Compute contraction tables.
-    const createLookup = (byteSize: number, list: string[]): Map<number, Uint8Array> => {
+
+    // Convert to bytes for contraction tables.
+    const createLookup = (tableId: number, list: string[]): Map<number, Uint8Array> => {
       const lookup = new Map<number, Uint8Array>()
       list.sort((a, b) => b.length - a.length)
       for (const entry of list) {
         const bytes = this.textEncoder.encode(entry)
-        if (bytes.length <= (byteSize + 1)) {
-          throw new Error(`Contraction is smaller than encoding: [${byteSize}] ${entry}`)
+        if (tableId === 0) {
+          if (bytes.length <= 1) {
+            throw new Error(`Contraction is smaller than encoding: [1-byte] ${entry}`)
+          }
+        } else if (bytes.length <= 2) {
+          throw new Error(`Contraction is smaller than encoding: [2-byte] ${entry}`)
         }
         lookup.set(lookup.size, bytes)
       }
@@ -68,13 +73,13 @@ export class Twaddle {
     }
 
     // Layer contraction tables.
-    for (const byteSize of lookupSizes) {
-      const list = source.get(byteSize) ?? defaultContractionsSource.get(byteSize)
+    for (let tableId = 0; tableId <= 16; ++tableId) {
+      const list = source.get(tableId) ?? defaultContractionsSource.get(tableId)
       if (list === undefined) {
         continue
       }
-      const lookup = createLookup(byteSize, list)
-      this.contractions.set(byteSize, lookup)
+      const lookup = createLookup(tableId, list)
+      this.contractions.set(tableId, lookup)
     }
   }
 
@@ -231,7 +236,7 @@ export class Twaddle {
     }
 
     const addNumberToken = (compressed: GByteBuffer, source: Uint8Array, index: number): number => {
-      const maxNumberSize = 0xffffffff
+      const maxNumber = 0x7fffffff
       let count = 1
       let more: boolean
       let value = source[index] - 0x30
@@ -244,7 +249,7 @@ export class Twaddle {
         more = isDigit(byte)
         if (more) {
           const newValue = (value * 10) + (byte - 0x30)
-          if (newValue > maxNumberSize) {
+          if (newValue > maxNumber) {
             break
           }
           value = newValue
@@ -354,9 +359,8 @@ export class Twaddle {
         return null
       }
 
-      const lookupSizes = [ 4, 2, 1, 0 ]
-      for (const lookupSize of lookupSizes) {
-        const lookup = this.contractions.get(lookupSize)
+      for (let tableId = 16; tableId >= 0; --tableId) {
+        const lookup = this.contractions.get(tableId)
         if (lookup === undefined) {
           continue
         }
@@ -364,22 +368,13 @@ export class Twaddle {
         if (lookupIndex === null) {
           continue
         }
-        if (lookupSize === 0) {
+        if (tableId === 0) {
           const token = 0xe0 | lookupIndex
           compressed.appendUInt8(token)
         } else {
-          const token = 0xf0 | lookupSize
+          const token = 0xf0 | (tableId - 1)
           compressed.appendUInt8(token)
-          switch (lookupSize) {
-            case 4:
-              compressed.appendUInt32(lookupIndex)
-              break
-            case 2:
-              compressed.appendUInt16(lookupIndex)
-              break
-            default:
-              compressed.appendUInt8(lookupIndex)
-          }
+          compressed.appendUInt8(lookupIndex)
         }
         return lookup.get(lookupIndex)!.length
       }
@@ -516,23 +511,23 @@ export class Twaddle {
     }
 
     const resolveContractionToken = (byte: number): [ boolean, string | null ] => {
-      let lookupSize: number
+      let tableId: number
       let lookupIndex: number
       if ((byte & 0x10) === 0) {
         // Fast lookup!
-        lookupSize = 0
+        tableId = 0
         lookupIndex = byte & 0x0f
       } else {
-        lookupSize = byte & 0x0f
-        lookupIndex = getValueOfNextBytes(lookupSize)
+        tableId = (byte & 0x0f) + 1
+        lookupIndex = getValueOfNextBytes(1)
       }
-      const lookup = this.contractions.get(lookupSize)
+      const lookup = this.contractions.get(tableId)
       if (lookup === undefined) {
-        throw new Error(`No contractions found of size: ${lookupSize}`)
+        throw new Error(`No contractions found [tableId: ${tableId}]`)
       }
       const bytes = lookup.get(lookupIndex)
       if (bytes === undefined) {
-        throw new Error(`Contraction lookup index ${lookupIndex} not found!`)
+        throw new Error(`Contraction lookup index ${tableId}]:${lookupIndex} not found!`)
       }
       expanded.append(bytes)
       const str = this.textDecoder!.decode(expanded.view(), { stream: true })

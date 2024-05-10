@@ -4,18 +4,18 @@
 /**
  * Default contraction source for Twaddle.
  *
- * <p>It is highly recommended developers using Twaddle construct their own contraction tables.
+ * <p>It is highly recommended developers using Twaddle add their own contraction tables, or even
+ * replace them completely.
  *
- * <p>These defaults are optimized for json messages and local testing. Feel free to use this
- * as a starting point for your own tables.
+ * <p>These defaults are optimized for json messages.
  */
 export const defaultContractionsSource = new Map<number, string[]>([
-  [0, [
+  [0, [ // Up to 16 entries.
     "null",
     "true",
     "false",
     "https://",
-    "://",
+    "0x",
     "{\"",
     "\"}",
     "\":",
@@ -28,13 +28,16 @@ export const defaultContractionsSource = new Map<number, string[]>([
     "}]",
     "]}"
   ]],
-  [1, [
-    "http://",
+  [16, [ // Up to 256 entries.
     "localhost",
     "127.0.0.1",
+    "http://",
+    "ws://",
+    "://",
     ".com",
     ".org",
     ".net",
+    ".edu",
     ".io"
   ]]
 ])
