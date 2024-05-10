@@ -4,7 +4,7 @@
 import { Twaddle } from "../src/Twaddle"
 
 describe("Twaddle", () => {
-  describe("Base64", () => {
+  describe("Base64 encoding", () => {
     test("base64 encode/decode", () => {
       const twaddle = new Twaddle(null)
       const original = "hello"
@@ -40,6 +40,17 @@ describe("Twaddle", () => {
       expect(encoded).toBe("")
     })
 
+    test("repeated characters", () => {
+      const twaddle = new Twaddle(null)
+      const original = "wwwwww"
+      const base64Encoded = twaddle.base64StringEncode(original)
+      const encoded = twaddle.encode(original)
+      expect(encoded).not.toBe(original)
+      expect(encoded.length).toBeLessThan(base64Encoded.length)
+      const decoded = twaddle.decode(encoded)
+      expect(decoded).toBe(original)
+    })
+
     describe("Numbers", () => {
       // Every 3 characters we get 4 base64 characters. So for these tests we make sure we always
       // have multiple of 3 characters + 1 to prove we are getting less base64 characters after
@@ -47,10 +58,10 @@ describe("Twaddle", () => {
       test("less than 100 no contraction", () => {
         const twaddle = new Twaddle(null)
         const original = "::12"
-        const defaultEncoded = twaddle.base64StringEncode(original)
+        const base64Encoded = twaddle.base64StringEncode(original)
         const encoded = twaddle.encode(original)
         expect(encoded).not.toBe(original)
-        expect(encoded.length).toBe(defaultEncoded.length)
+        expect(encoded.length).toBe(base64Encoded.length)
         const decoded = twaddle.decode(encoded)
         expect(decoded).toBe(original)
       })
@@ -58,10 +69,10 @@ describe("Twaddle", () => {
       test("1 byte contraction", () => {
         const twaddle = new Twaddle(null)
         const original = ":123"
-        const defaultEncoded = twaddle.base64StringEncode(original)
+        const base64Encoded = twaddle.base64StringEncode(original)
         const encoded = twaddle.encode(original)
         expect(encoded).not.toBe(original)
-        expect(encoded.length).toBeLessThan(defaultEncoded.length)
+        expect(encoded.length).toBeLessThan(base64Encoded.length)
         const decoded = twaddle.decode(encoded)
         expect(decoded).toBe(original)
       })
@@ -69,10 +80,10 @@ describe("Twaddle", () => {
       test("2 byte contraction", () => {
         const twaddle = new Twaddle(null)
         const original = "1234"
-        const defaultEncoded = twaddle.base64StringEncode(original)
+        const base64Encoded = twaddle.base64StringEncode(original)
         const encoded = twaddle.encode(original)
         expect(encoded).not.toBe(original)
-        expect(encoded.length).toBeLessThan(defaultEncoded.length)
+        expect(encoded.length).toBeLessThan(base64Encoded.length)
         const decoded = twaddle.decode(encoded)
         expect(decoded).toBe(original)
       })
@@ -80,10 +91,10 @@ describe("Twaddle", () => {
       test("4 byte contraction", () => {
         const twaddle = new Twaddle(null)
         const original = ":123456789"
-        const defaultEncoded = twaddle.base64StringEncode(original)
+        const base64Encoded = twaddle.base64StringEncode(original)
         const encoded = twaddle.encode(original)
         expect(encoded).not.toBe(original)
-        expect(encoded.length).toBeLessThan(defaultEncoded.length)
+        expect(encoded.length).toBeLessThan(base64Encoded.length)
         const decoded = twaddle.decode(encoded)
         expect(decoded).toBe(original)
       })
@@ -91,10 +102,21 @@ describe("Twaddle", () => {
       test("multi-group contraction", () => {
         const twaddle = new Twaddle(null)
         const original = "::12345678901"
-        const defaultEncoded = twaddle.base64StringEncode(original)
+        const base64Encoded = twaddle.base64StringEncode(original)
         const encoded = twaddle.encode(original)
         expect(encoded).not.toBe(original)
-        expect(encoded.length).toBeLessThan(defaultEncoded.length)
+        expect(encoded.length).toBeLessThan(base64Encoded.length)
+        const decoded = twaddle.decode(encoded)
+        expect(decoded).toBe(original)
+      })
+
+      test("with leading zeroes", () => {
+        const twaddle = new Twaddle(null)
+        const original = "000123"
+        const base64Encoded = twaddle.base64StringEncode(original)
+        const encoded = twaddle.encode(original)
+        expect(encoded).not.toBe(original)
+        expect(encoded.length).toBeLessThan(base64Encoded.length)
         const decoded = twaddle.decode(encoded)
         expect(decoded).toBe(original)
       })

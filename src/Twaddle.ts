@@ -29,9 +29,9 @@ export class Twaddle {
     [45, 62], [95, 63]
   ])
 
-  private readonly textEncoder = new TextEncoder()
-  private readonly textDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
   private readonly contractions = new Map<number, Map<number, Uint8Array>>()
+  private readonly textEncoder = new TextEncoder()
+  private textDecoder: TextDecoder | null = null
 
   /**
    * Creates a Twaddle object ready to encode and decode messages.
@@ -180,7 +180,7 @@ export class Twaddle {
       if (bytes.length === 0) {
         continue
       }
-      const str = this.textDecoder.decode(bytes, { stream: true })
+      const str = this.textDecoder!.decode(bytes, { stream: true })
       if (str.length !== 0) {
         yield str
       }
@@ -217,6 +217,7 @@ export class Twaddle {
    * @throws Error if it's an invalid base64 string.
    */
   public base64StringDecode(str: string): string {
+    this.textDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
     return this.stringCollector(this.bytesToUtf8Characters(this.base64BytesToBytes(this.stringToUtf8Bytes(str))))
   }
 
@@ -279,8 +280,36 @@ export class Twaddle {
       return 1
     }
 
-    const addNonAsciiToken = (compressed: GByteBuffer, source: Uint8Array, index: number): number => {
-      const maxBlobSize = 0x3f
+    const addRepeatToken = (compressed: GByteBuffer, source: Uint8Array, index: number): number => {
+      const maxRepeatCount = 0x1f
+      let count = 1
+      let more: boolean
+      const value = source[index]
+      do {
+        if (count >= maxRepeatCount) {
+          break
+        }
+        const walker = index + count
+        if (walker >= source.length) {
+          break
+        }
+        const byte = source[walker]
+        more = value === byte
+        if (more) {
+          ++count
+        }
+      } while (more)
+      if (count < 3) {
+        return 0
+      }
+      const token = 0xa0 | count
+      compressed.appendUInt8(token)
+      compressed.appendUInt8(value)
+      return count
+    }
+
+    const addBlobToken = (compressed: GByteBuffer, source: Uint8Array, index: number): number => {
+      const maxBlobSize = 0x1f
       let count = 1
       let more: boolean
       do {
@@ -365,8 +394,15 @@ export class Twaddle {
           return used
         }
       }
+      {
+        // Repeated.
+        const used = addRepeatToken(compressed, source, index)
+        if (used > 0) {
+          return used
+        }
+      }
       const byte = source[index]
-      if (isDigit(byte)) {
+      if (isDigit(byte) && (byte !== 0x30)) {
         // Digits.
         const used = addNumberToken(compressed, source, index)
         if (used > 0) {
@@ -378,7 +414,7 @@ export class Twaddle {
         return addAsciiToken(compressed, source, index)
       }
       // Non-ASCII. Take as-is as a group.
-      return addNonAsciiToken(compressed, source, index)
+      return addBlobToken(compressed, source, index)
     }
 
     const source = this.textEncoder.encode(str)
@@ -418,13 +454,13 @@ export class Twaddle {
 
     const resolveAsciiToken = (byte: number): [ boolean, string | null ] => {
       expanded.appendUInt8(byte)
-      const str = this.textDecoder.decode(expanded.view(), { stream: true })
+      const str = this.textDecoder!.decode(expanded.view(), { stream: true })
       expanded.reset()
       return [ true, str.length === 0 ? null : str ]
     }
 
-    const resolveNonAsciiToken = (byte: number): [ boolean, string | null ] => {
-      const count = byte & 0x3f
+    const resolveBlobToken = (byte: number): [ boolean, string | null ] => {
+      const count = byte & 0x1f
       for (let i = 0; i < count; ++i) {
         const b = getNextByte()
         if (b === null) {
@@ -432,7 +468,21 @@ export class Twaddle {
         }
         expanded.appendUInt8(b)
       }
-      const str = this.textDecoder.decode(expanded.view(), { stream: true })
+      const str = this.textDecoder!.decode(expanded.view(), { stream: true })
+      expanded.reset()
+      return [ true, str.length === 0 ? null : str ]
+    }
+
+    const resolveRepeatToken = (byte: number): [ boolean, string | null ] => {
+      const count = byte & 0x1f
+      const b = getNextByte()
+      if (b === null) {
+        throw new Error("Truncated message!")
+      }
+      for (let i = 0; i < count; ++i) {
+        expanded.appendUInt8(b)
+      }
+      const str = this.textDecoder!.decode(expanded.view(), { stream: true })
       expanded.reset()
       return [ true, str.length === 0 ? null : str ]
     }
@@ -460,7 +510,7 @@ export class Twaddle {
       for (const ch of digits) {
         expanded.appendUInt8(ch.charCodeAt(0))
       }
-      const str = this.textDecoder.decode(expanded.view(), { stream: true })
+      const str = this.textDecoder!.decode(expanded.view(), { stream: true })
       expanded.reset()
       return [ true, str.length === 0 ? null : str ]
     }
@@ -485,19 +535,23 @@ export class Twaddle {
         throw new Error(`Contraction lookup index ${lookupIndex} not found!`)
       }
       expanded.append(bytes)
-      const str = this.textDecoder.decode(expanded.view(), { stream: true })
+      const str = this.textDecoder!.decode(expanded.view(), { stream: true })
       expanded.reset()
       return [ true, str.length === 0 ? null : str ]
     }
 
     const resolveNextToken = (byte: number): [ boolean, string | null ] => {
       if ((byte & 0x80) === 0) {
-        // ASCII. Take as-is.
+        // ASCII character. Take as-is.
         return resolveAsciiToken(byte)
       }
       if ((byte & 0x40) === 0) {
-        // Non-ASCII. Take as-is as a group.
-        return resolveNonAsciiToken(byte)
+        if ((byte & 0x20) === 0) {
+          // Blob. Take as-is as a group.
+          return resolveBlobToken(byte)
+        }
+        // Repeated character.
+        return resolveRepeatToken(byte)
       }
       if ((byte & 0x20) === 0) {
         // Digits.
@@ -539,7 +593,8 @@ export class Twaddle {
    * @param str A Twaddle compressed string.
    * @return Expanded string.
    */
-  public decode(str: string): string | null {
+  public decode(str: string): string {
+    this.textDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
     return this.stringCollector(this.compressedBytesToString(this.base64BytesToBytes(this.stringToUtf8Bytes(str))))
   }
 }
