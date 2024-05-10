@@ -8,7 +8,7 @@
  *
  * <p>All UInt storage references are little-endian.
  */
-export class GByteBuffer implements ArrayLike<number> {
+export class GByteBuffer {
 
   /**
    * Creates an empty buffer.
@@ -61,7 +61,7 @@ export class GByteBuffer implements ArrayLike<number> {
    *
    * @return The overall buffer capacity.
    */
-  public get capacity() : number {
+  public get capacity(): number {
     return this.bytes.length
   }
 
@@ -73,33 +73,22 @@ export class GByteBuffer implements ArrayLike<number> {
   }
 
   /**
-   * Index operator definition.
-   */
-  [index: number]: number
-
-  /**
-   * Index get operator.
+   * Get byte at the given index.
    *
    * @param index Byte index.
    * @return Byte at the given index.
    */
-  public get(index: number): number {
-    if ((index < 0) || (index >= this.size)) {
-      throw new Error(`Index out of bounds: ${index}`)
-    }
+  public getAt(index: number): number | undefined {
     return this.bytes[index]
   }
 
   /**
-   * Index set operator.
+   * Set the byte at the given index.
    *
    * @param index Byte index.
    * @param value Value to store.
    */
-  public set(index: number, value: number) {
-    if ((index < 0) || (index >= this.size)) {
-      throw new Error(`Index out of bounds: ${index}`)
-    }
+  public setAt(index: number, value: number) {
     this.bytes[index] = value
   }
 
@@ -114,14 +103,18 @@ export class GByteBuffer implements ArrayLike<number> {
   }
 
   /**
-   * Appends the contents of the given ArrayLike object to the buffer.
+   * Appends the contents of the given byte array to the buffer.
    *
-   * @param bytes ArrayLike object.
+   * @param bytes Byte array.
    */
-  public append(bytes: ArrayLike<number>) {
+  public append(bytes: ArrayLike<number> | GByteBuffer) {
     const count = bytes.length
     this.ensureCapacity(this.size + count)
-    this.bytes.set(bytes, this.size)
+    if (bytes instanceof GByteBuffer) {
+      this.bytes.set(bytes.bytes, this.size)
+    } else {
+      this.bytes.set(bytes, this.size)
+    }
     this.size += count
   }
 
@@ -132,12 +125,12 @@ export class GByteBuffer implements ArrayLike<number> {
    * @param byte Byte to insert.
    */
   public insert(offset: number, byte: number) {
-    if (offset > this.size) {
+    if ((offset < 0) || (offset > this.size)) {
       throw new Error("Out of bounds!")
     }
     this.ensureCapacity(this.size + 1)
     if (offset < this.size) {
-      this.bytes.copyWithin(offset + 1, offset, this.size - offset)
+      this.bytes.copyWithin(offset + 1, offset, this.size)
     }
     this.bytes[offset] = byte
     this.size += 1
@@ -150,15 +143,15 @@ export class GByteBuffer implements ArrayLike<number> {
    * @param bytes ArrayLike object.
    */
   public insertAll(offset: number, bytes: ArrayLike<number>) {
-    if (offset > this.size) {
+    if ((offset < 0) || (offset > this.size)) {
       throw new Error("Out of bounds!")
     }
     const count = bytes.length
     this.ensureCapacity(this.size + count)
     if (offset < this.size) {
-      this.bytes.copyWithin(offset + count, offset, this.size - offset)
+      this.bytes.copyWithin(offset + count, offset, this.size)
     }
-    this.bytes.set(bytes, this.size)
+    this.bytes.set(bytes, offset)
     this.size += count
   }
 
@@ -169,15 +162,18 @@ export class GByteBuffer implements ArrayLike<number> {
    * @param count Count of bytes to remove.
    */
   public remove(offset: number, count = 1) {
+    if ((offset < 0) || (offset >= this.size)) {
+      throw new Error("Out of bounds!")
+    }
     if (count === 0) {
       return
     }
     const start = offset + count
-    if ((offset >= this.size) || (start > this.size)) {
+    if (start > this.size) {
       throw new Error("Out of bounds!")
     }
     if (start < this.size) {
-      this.bytes.copyWithin(offset, start, this.size - start)
+      this.bytes.copyWithin(offset, start, this.size)
     }
     this.size -= count
   }
@@ -233,7 +229,7 @@ export class GByteBuffer implements ArrayLike<number> {
    * @return UInt16 value.
    */
   public getUInt16(offset: number): number {
-    return this.bytes[offset] &
+    return this.bytes[offset] |
       (this.bytes[offset + 1] << 8)
   }
 
@@ -244,9 +240,9 @@ export class GByteBuffer implements ArrayLike<number> {
    * @return UInt32 value.
    */
   public getUInt32(offset: number): number {
-    return this.bytes[offset] &
-      (this.bytes[offset + 1] << 8) &
-      (this.bytes[offset + 2] << 16) &
+    return this.bytes[offset] |
+      (this.bytes[offset + 1] << 8) |
+      (this.bytes[offset + 2] << 16) |
       (this.bytes[offset + 3] << 24)
   }
 

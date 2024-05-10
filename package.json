@@ -24,7 +24,7 @@
     "testEnvironment": "node",
     "testMatch": [ "**/*.test.ts" ],
     "collectCoverage": true,
-    "coverageReporters": [ "lcov" ]
+    "coverageReporters": [ "lcov", "text" ]
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
