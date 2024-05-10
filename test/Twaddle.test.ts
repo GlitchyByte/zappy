@@ -51,6 +51,37 @@ describe("Twaddle", () => {
       expect(decoded).toBe(original)
     })
 
+    test("long repeated characters", () => {
+      const twaddle = new Twaddle(null)
+      const original = "o".repeat(0x30)
+      const base64Encoded = twaddle.base64StringEncode(original)
+      const encoded = twaddle.encode(original)
+      expect(encoded).not.toBe(original)
+      expect(encoded.length).toBeLessThan(base64Encoded.length)
+      const decoded = twaddle.decode(encoded)
+      expect(decoded).toBe(original)
+    })
+
+    test("blob", () => {
+      // Blobs are not smaller than simple base64.
+      const twaddle = new Twaddle(null)
+      const original = "👍☠️✌️"
+      const encoded = twaddle.encode(original)
+      expect(encoded).not.toBe(original)
+      const decoded = twaddle.decode(encoded)
+      expect(decoded).toBe(original)
+    })
+
+    test("long blob", () => {
+      // Blobs are not smaller than simple base64.
+      const twaddle = new Twaddle(null)
+      const original = "👍☠️✌️".repeat(0x30)
+      const encoded = twaddle.encode(original)
+      expect(encoded).not.toBe(original)
+      const decoded = twaddle.decode(encoded)
+      expect(decoded).toBe(original)
+    })
+
     describe("Numbers", () => {
       // Every 3 characters we get 4 base64 characters. So for these tests we make sure we always
       // have multiple of 3 characters + 1 to prove we are getting less base64 characters after
