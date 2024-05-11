@@ -1,7 +1,7 @@
 // Copyright 2024 GlitchyByte
 // SPDX-License-Identifier: Apache-2.0
 
-import { GByteBuffer } from "../src/GByteBuffer"
+import { GByteBuffer } from "../main/GByteBuffer"
 
 describe("GByteBuffer", () => {
   test("create with existing buffer", () => {

@@ -1,7 +1,7 @@
 // Copyright 2024 GlitchyByte
 // SPDX-License-Identifier: Apache-2.0
 
-import { Twaddle } from "../src/Twaddle"
+import { Twaddle } from "../main/Twaddle"
 
 describe("Twaddle", () => {
   describe("Base64 encoding", () => {
