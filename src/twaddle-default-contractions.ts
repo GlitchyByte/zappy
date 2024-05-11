@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Default contraction source for Twaddle.
+ * Default contractions for Twaddle.
  *
  * <p>It is highly recommended developers using Twaddle add their own contraction tables, or even
  * replace them completely.
  *
  * <p>These defaults are optimized for json messages.
  */
-export const defaultContractionsSource = new Map<number, string[]>([
+export const defaultContractions = new Map<number, string[]>([
   [0, [ // Up to 16 entries.
     "null",
     "true",

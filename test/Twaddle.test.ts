@@ -99,7 +99,7 @@ describe("Twaddle", () => {
 
       test("1 byte contraction", () => {
         const twaddle = new Twaddle(null)
-        const original = ":123"
+        const original = ":255"
         const base64Encoded = twaddle.base64StringEncode(original)
         const encoded = twaddle.encode(original)
         expect(encoded).not.toBe(original)
@@ -110,7 +110,7 @@ describe("Twaddle", () => {
 
       test("2 byte contraction", () => {
         const twaddle = new Twaddle(null)
-        const original = "1234"
+        const original = "65535"
         const base64Encoded = twaddle.base64StringEncode(original)
         const encoded = twaddle.encode(original)
         expect(encoded).not.toBe(original)

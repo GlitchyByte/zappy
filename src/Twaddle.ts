@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { GByteBuffer } from "./GByteBuffer"
-import { defaultContractionsSource } from "./twaddle-default-contraction-source"
+import { defaultContractions } from "./twaddle-default-contractions"
 
 type StringGenerator = Generator<string, void, void>
 type BytesGenerator = Generator<Uint8Array, void, void>
@@ -74,7 +74,7 @@ export class Twaddle {
 
     // Layer contraction tables.
     for (let tableId = 0; tableId <= 16; ++tableId) {
-      const list = source.get(tableId) ?? defaultContractionsSource.get(tableId)
+      const list = source.get(tableId) ?? defaultContractions.get(tableId)
       if (list === undefined) {
         continue
       }
@@ -236,6 +236,9 @@ export class Twaddle {
     }
 
     const addNumberToken = (compressed: GByteBuffer, source: Uint8Array, index: number): number => {
+      // FIXME JS BUG: Can't have an unsigned 32bit int, if bit 31 is set JS makes it negative.
+      //  So we'll only encode numbers up to 31 bits long. Though the problem only shows when
+      //  decoding, we prevent encoding so we don't manifest the bug later.
       const maxNumber = 0x7fffffff
       let count = 1
       let more: boolean
