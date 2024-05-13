@@ -1,4 +1,4 @@
-# Twaddle
+# Zappy
 
 ![Version](https://img.shields.io/badge/Version-1.0.0-blue)
 ![Spec](https://img.shields.io/badge/Spec-1.0.0-cyan)
@@ -16,23 +16,23 @@ Lightweight library for compressing and encoding web-related text
 * Encryption. This ain't it. It's obfuscation at best.
 
 #### Notes
-To fully take advantage of Twaddle, you as a dev should provide 
+To fully take advantage of Zappy, you as a dev should provide 
 `contraction tables` specialized to your payloads.  
 
-Twaddle strings should not be stored. They are designed for transport
+Zappy strings should not be stored. They are designed for transport
 where one side encodes before transmitting and the other side decodes 
 after receiving. If the `contraction tables` change between encoding 
 and decoding, it's very possible the output will not be the same or 
 even invalid. Keep this in mind when decoding and handle these cases 
-accordingly. That is, always sanitize your (decoded) input and handle 
+accordingly. That is, always sanitize your (decoded) output and handle 
 decoding error conditions.
 
-[Read the spec here.](https://github.com/glitchybyte/twaddle/SPEC.md)
+[Read the spec here.](https://github.com/glitchybyte/zappy/SPEC.md)
 
 # How to use
 
 ### Add to your project
-npm install @glitchybyte/twaddle
+npm install @glitchybyte/zappy
 
 ### Define contraction tables
 There are 17 `contraction tables` available for use. 
@@ -46,7 +46,7 @@ Tables 1-17 allow 256 entries each. Entries can have a minimum of 3
 characters (or 3 bytes when converted to UTF-8).
 
 Developer defined contraction tables are overlaid onto
-[default tables](https://github.com/glitchybyte/twaddle/src/main/twaddle-default-contractions.ts). 
+[default tables](https://github.com/glitchybyte/zappy/src/main/zappy-default-contractions.ts). 
 There is a default table 0 specialized in json, and a default 
 table 16 with common strings.
 
@@ -62,12 +62,12 @@ const contractions = new Map<number, string[]>([
 
 ### Encode and decode
 ```ts
-const twaddle = new Twaddle(contractions)
+const zappy = new Zappy(contractions)
 const json = '{' +
-  '"codeUrl":"https://github.com/glitchybyte/twaddle",' +
+  '"codeUrl":"https://github.com/glitchybyte/zappy",' +
   '"msg":"When I deal with internationalization I think of defenestration."' +
   '}'
-const encoded = twaddle.encode(json)
+const encoded = zappy.encode(json)
 console.log(`[${encoded.length}] ${encoded}`)
 // [92] 6mNvZGVVcmzm4GdpdGh1Yv8EL_ACL3R3YWRkbGXnbXNn5ldoZW4gSSBkZWFs
 //      IHdpdGgg8AAgSSB0aGluayBvZiDwAS7r
@@ -77,9 +77,9 @@ console.log(`[${encoded.length}] ${encoded}`)
 //       YWRkbGUiLCJtc2ciOiJXaGVuIEkgZGVhbCB3aXRoIGludGVybmF0aW9uYWxp
 //       emF0aW9uIEkgdGhpbmsgb2YgZGVmZW5lc3RyYXRpb24uIn0
 
-const decoded = twaddle.decode(encoded)
+const decoded = zappy.decode(encoded)
 console.log(`[${decoded.length}] ${decoded}`)
-// [125] {"codeUrl":"https://github.com/glitchybyte/twaddle","msg":"W
+// [125] {"codeUrl":"https://github.com/glitchybyte/zappy","msg":"W
 //       hen I deal with internationalization I think of defenestrati
 //       on."}
 ```

@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /**
- * Default contractions for Twaddle.
+ * Default contractions for Zappy.
  *
- * <p>It is highly recommended developers using Twaddle add their own contraction tables, or even
+ * <p>It is highly recommended developers using Zappy add their own contraction tables, or even
  * replace them completely.
  *
  * <p>These defaults are optimized for json messages.

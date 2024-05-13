@@ -1,6 +1,6 @@
 {
-  "name": "twaddle",
-  "version": "0.1.0",
+  "name": "zappy",
+  "version": "1.0.0",
   "author": "GlitchyByte",
   "license": "Apache-2.0",
   "description": "Lightweight library for compressing and encoding web-related text (json, urls, etc.) into a URL-safe format for efficient transport.",
@@ -10,8 +10,8 @@
     "url-safe",
     "base64"
   ],
-  "main": "./dist/Twaddle.js",
-  "types": "./dist/Twaddle.d.ts",
+  "main": "./dist/Zappy.js",
+  "types": "./dist/Zappy.d.ts",
   "files": [
     "./dist"
   ],

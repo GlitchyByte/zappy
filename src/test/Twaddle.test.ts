@@ -1,106 +1,106 @@
 // Copyright 2024 GlitchyByte
 // SPDX-License-Identifier: Apache-2.0
 
-import { Twaddle } from "../main/Twaddle"
+import { Zappy } from "../main/Zappy"
 
-describe("Twaddle", () => {
+describe("Zappy", () => {
   describe("Base64 encoding", () => {
     test("base64 encode/decode", () => {
-      const twaddle = new Twaddle(null)
+      const zappy = new Zappy(null)
       const original = "hello"
-      const encoded = twaddle.base64StringEncode(original)
+      const encoded = zappy.base64StringEncode(original)
       expect(encoded).not.toBe(original)
-      const decoded = twaddle.base64StringDecode(encoded)
+      const decoded = zappy.base64StringDecode(encoded)
       expect(decoded).toBe(original)
     })
 
     test("base64 proper encode check", () => {
-      const twaddle = new Twaddle(null)
-      const encoded = twaddle.base64StringEncode("hello")
+      const zappy = new Zappy(null)
+      const encoded = zappy.base64StringEncode("hello")
       expect(encoded).toBe("aGVsbG8")
     })
 
     test("base64 malformed check", () => {
-      const twaddle = new Twaddle(null)
-      let decoded = twaddle.base64StringDecode("aGVsb@8") // Wrong character.
+      const zappy = new Zappy(null)
+      let decoded = zappy.base64StringDecode("aGVsb@8") // Wrong character.
       expect(decoded).toBeNull()
-      decoded = twaddle.base64StringDecode("aGVsbG8c1") // Wrong length.
+      decoded = zappy.base64StringDecode("aGVsbG8c1") // Wrong length.
       expect(decoded).toBeNull()
     })
 
     test("base64 malformed check with exception", () => {
-      const twaddle = new Twaddle(null, true)
+      const zappy = new Zappy(null, true)
       expect(() => {
         // @ts-ignore
-        const decoded = twaddle.base64StringDecode("aGVsb@8") // Wrong character.
+        const decoded = zappy.base64StringDecode("aGVsb@8") // Wrong character.
       }).toThrow()
       expect(() => {
         // @ts-ignore
-        const decoded = twaddle.base64StringDecode("aGVsbG8c1") // Wrong length.
+        const decoded = zappy.base64StringDecode("aGVsbG8c1") // Wrong length.
       }).toThrow()
     })
   })
 
-  describe("Twaddle encoding", () => {
+  describe("Zappy encoding", () => {
     test("empty message", () => {
-      const twaddle = new Twaddle(null)
-      const encoded = twaddle.encode("")
+      const zappy = new Zappy(null)
+      const encoded = zappy.encode("")
       expect(encoded).toBe("")
     })
 
     test("malformed check", () => {
-      const twaddle = new Twaddle(null)
-      const decoded = twaddle.decode("c")
+      const zappy = new Zappy(null)
+      const decoded = zappy.decode("c")
       expect(decoded).toBeNull()
     })
 
     test("malformed check with exception", () => {
-      const twaddle = new Twaddle(null, true)
+      const zappy = new Zappy(null, true)
       expect(() => {
         // @ts-ignore
-        const decoded = twaddle.decode("c__")
+        const decoded = zappy.decode("c__")
       }).toThrow()
     })
 
     test("repeated characters", () => {
-      const twaddle = new Twaddle(null)
+      const zappy = new Zappy(null)
       const original = "wwwwww"
-      const base64Encoded = twaddle.base64StringEncode(original)
-      const encoded = twaddle.encode(original)
+      const base64Encoded = zappy.base64StringEncode(original)
+      const encoded = zappy.encode(original)
       expect(encoded).not.toBe(original)
       expect(encoded.length).toBeLessThan(base64Encoded.length)
-      const decoded = twaddle.decode(encoded)
+      const decoded = zappy.decode(encoded)
       expect(decoded).toBe(original)
     })
 
     test("long repeated characters", () => {
-      const twaddle = new Twaddle(null)
+      const zappy = new Zappy(null)
       const original = "o".repeat(0x30)
-      const base64Encoded = twaddle.base64StringEncode(original)
-      const encoded = twaddle.encode(original)
+      const base64Encoded = zappy.base64StringEncode(original)
+      const encoded = zappy.encode(original)
       expect(encoded).not.toBe(original)
       expect(encoded.length).toBeLessThan(base64Encoded.length)
-      const decoded = twaddle.decode(encoded)
+      const decoded = zappy.decode(encoded)
       expect(decoded).toBe(original)
     })
 
     test("blob", () => {
       // Blobs are not smaller than simple base64.
-      const twaddle = new Twaddle(null)
+      const zappy = new Zappy(null)
       const original = "👍☠️✌️"
-      const encoded = twaddle.encode(original)
+      const encoded = zappy.encode(original)
       expect(encoded).not.toBe(original)
-      const decoded = twaddle.decode(encoded)
+      const decoded = zappy.decode(encoded)
       expect(decoded).toBe(original)
     })
 
     test("long blob", () => {
       // Blobs are not smaller than simple base64.
-      const twaddle = new Twaddle(null)
+      const zappy = new Zappy(null)
       const original = "👍☠️✌️".repeat(0x30)
-      const encoded = twaddle.encode(original)
+      const encoded = zappy.encode(original)
       expect(encoded).not.toBe(original)
-      const decoded = twaddle.decode(encoded)
+      const decoded = zappy.decode(encoded)
       expect(decoded).toBe(original)
     })
 
@@ -109,78 +109,78 @@ describe("Twaddle", () => {
       // have multiple of 3 characters + 1 to prove we are getting less base64 characters after
       // contraction. If contraction removes at least one byte, it will reduce the output length.
       test("less than 100 no contraction", () => {
-        const twaddle = new Twaddle(null)
+        const zappy = new Zappy(null)
         const original = "::12"
-        const base64Encoded = twaddle.base64StringEncode(original)
-        const encoded = twaddle.encode(original)
+        const base64Encoded = zappy.base64StringEncode(original)
+        const encoded = zappy.encode(original)
         expect(encoded).not.toBe(original)
         expect(encoded.length).toBe(base64Encoded.length)
-        const decoded = twaddle.decode(encoded)
+        const decoded = zappy.decode(encoded)
         expect(decoded).toBe(original)
       })
 
       test("1 byte contraction", () => {
-        const twaddle = new Twaddle(null)
+        const zappy = new Zappy(null)
         const original = ":255"
-        const base64Encoded = twaddle.base64StringEncode(original)
-        const encoded = twaddle.encode(original)
+        const base64Encoded = zappy.base64StringEncode(original)
+        const encoded = zappy.encode(original)
         expect(encoded).not.toBe(original)
         expect(encoded.length).toBeLessThan(base64Encoded.length)
-        const decoded = twaddle.decode(encoded)
+        const decoded = zappy.decode(encoded)
         expect(decoded).toBe(original)
       })
 
       test("2 byte contraction", () => {
-        const twaddle = new Twaddle(null)
+        const zappy = new Zappy(null)
         const original = "65535"
-        const base64Encoded = twaddle.base64StringEncode(original)
-        const encoded = twaddle.encode(original)
+        const base64Encoded = zappy.base64StringEncode(original)
+        const encoded = zappy.encode(original)
         expect(encoded).not.toBe(original)
         expect(encoded.length).toBeLessThan(base64Encoded.length)
-        const decoded = twaddle.decode(encoded)
+        const decoded = zappy.decode(encoded)
         expect(decoded).toBe(original)
       })
 
       test("4 byte contraction", () => {
-        const twaddle = new Twaddle(null)
+        const zappy = new Zappy(null)
         const original = "2147483647"
-        const base64Encoded = twaddle.base64StringEncode(original)
-        const encoded = twaddle.encode(original)
+        const base64Encoded = zappy.base64StringEncode(original)
+        const encoded = zappy.encode(original)
         expect(encoded).not.toBe(original)
         expect(encoded.length).toBeLessThan(base64Encoded.length)
-        const decoded = twaddle.decode(encoded)
+        const decoded = zappy.decode(encoded)
         expect(decoded).toBe(original)
       })
 
       test("multi-group contraction", () => {
-        const twaddle = new Twaddle(null)
+        const zappy = new Zappy(null)
         const original = "::12345678901"
-        const base64Encoded = twaddle.base64StringEncode(original)
-        const encoded = twaddle.encode(original)
+        const base64Encoded = zappy.base64StringEncode(original)
+        const encoded = zappy.encode(original)
         expect(encoded).not.toBe(original)
         expect(encoded.length).toBeLessThan(base64Encoded.length)
-        const decoded = twaddle.decode(encoded)
+        const decoded = zappy.decode(encoded)
         expect(decoded).toBe(original)
       })
 
       test("with leading zeroes", () => {
-        const twaddle = new Twaddle(null)
+        const zappy = new Zappy(null)
         const original = "000123"
-        const base64Encoded = twaddle.base64StringEncode(original)
-        const encoded = twaddle.encode(original)
+        const base64Encoded = zappy.base64StringEncode(original)
+        const encoded = zappy.encode(original)
         expect(encoded).not.toBe(original)
         expect(encoded.length).toBeLessThan(base64Encoded.length)
-        const decoded = twaddle.decode(encoded)
+        const decoded = zappy.decode(encoded)
         expect(decoded).toBe(original)
       })
     })
 
     test("default contraction encode/decode json", () => {
-      const twaddle = new Twaddle(null)
+      const zappy = new Zappy(null)
       const original = '{"url":"https://example.com","emoji":"🥸"}'
-      const encoded = twaddle.encode(original)
+      const encoded = zappy.encode(original)
       expect(encoded).not.toBe(original)
-      const decoded = twaddle.decode(encoded)
+      const decoded = zappy.decode(encoded)
       expect(decoded).toBe(original)
     })
 
@@ -191,14 +191,14 @@ describe("Twaddle", () => {
           [2, [ "banana smoothie" ]],
           [4, [ "ice cream" ]]
         ])
-        const defaultTwaddle = new Twaddle(null)
-        const twaddle = new Twaddle(contractionSource)
+        const defaultZappy = new Zappy(null)
+        const zappy = new Zappy(contractionSource)
         let original = '{"url":"https://example.nope"}' // Only default 0-contractions.
-        let defaultEncoded = defaultTwaddle.encode(original)
-        let encoded = twaddle.encode(original)
+        let defaultEncoded = defaultZappy.encode(original)
+        let encoded = zappy.encode(original)
         expect(encoded).not.toBe(original)
         expect(encoded).toBe(defaultEncoded)
-        let decoded = twaddle.decode(encoded)
+        let decoded = zappy.decode(encoded)
         expect(decoded).toBe(original)
       })
 
@@ -208,14 +208,14 @@ describe("Twaddle", () => {
           [2, [ "banana smoothie" ]],
           [4, [ "ice cream" ]]
         ])
-        const defaultTwaddle = new Twaddle(null)
-        const twaddle = new Twaddle(contractionSource)
+        const defaultZappy = new Zappy(null)
+        const zappy = new Zappy(contractionSource)
         const original = '{"msg":"hello","dessert":"ice cream"}'
-        const defaultEncoded = defaultTwaddle.encode(original)
-        const encoded = twaddle.encode(original)
+        const defaultEncoded = defaultZappy.encode(original)
+        const encoded = zappy.encode(original)
         expect(encoded).not.toBe(original)
         expect(encoded.length).toBeLessThan(defaultEncoded.length)
-        const decoded = twaddle.decode(encoded)
+        const decoded = zappy.decode(encoded)
         expect(decoded).toBe(original)
       })
 
@@ -227,7 +227,7 @@ describe("Twaddle", () => {
         ])
         expect(() => {
           // @ts-ignore
-          const twaddle = new Twaddle(contractionSource)
+          const zappy = new Zappy(contractionSource)
         }).toThrow()
       })
 
@@ -237,7 +237,7 @@ describe("Twaddle", () => {
         ])
         expect(() => {
           // @ts-ignore
-          const twaddle = new Twaddle(contractionSource)
+          const zappy = new Zappy(contractionSource)
         }).toThrow()
       })
     })

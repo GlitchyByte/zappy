@@ -2,7 +2,7 @@
 # Copyright 2023-2024 GlitchyByte
 # SPDX-License-Identifier: MIT
 
-# Test Twaddle.
+# Test Zappy.
 
 # [Setup]
 set -u # Exit with an error if a variable is used without being set.

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { GByteBuffer } from "./GByteBuffer"
-import { defaultContractions } from "./twaddle-default-contractions"
+import { defaultContractions } from "./zappy-default-contractions"
 
 type StringGenerator = Generator<string, void, void>
 type BytesGenerator = Generator<Uint8Array, void, void>
@@ -12,7 +12,7 @@ type BytesGenerator = Generator<Uint8Array, void, void>
  *
  * <p>It uses base64 as the message encoding, but the internal bytes are compressed.
  */
-export class Twaddle {
+export class Zappy {
 
   /**
    * Base64 alphabet and map to convert back to byte value.
@@ -35,7 +35,7 @@ export class Twaddle {
   private textDecoder: TextDecoder | null = null
 
   /**
-   * Creates a Twaddle object ready to encode and decode messages.
+   * Creates a Zappy object ready to encode and decode messages.
    *
    * @param source The contraction source used for aiding compression. These will be overlaid
    *          on the default contractions that favors json. Whole tables are replaced in the
@@ -135,7 +135,7 @@ export class Twaddle {
   private *base64BytesToBase64Alphabet(gen: BytesGenerator): StringGenerator {
     for (const bytes of gen) {
       for (const byte of bytes) {
-        yield Twaddle.base64Alphabet[byte]
+        yield Zappy.base64Alphabet[byte]
       }
     }
   }
@@ -163,7 +163,7 @@ export class Twaddle {
     }
     for (const bytes of gen) {
       for (const byte of bytes) {
-        const fullByte = Twaddle.base64Map.get(byte)
+        const fullByte = Zappy.base64Map.get(byte)
         if (fullByte === undefined) {
           throw new Error("Invalid base64 value!")
         }
@@ -588,19 +588,19 @@ export class Twaddle {
   }
 
   /**
-   * Turns a string into a Twaddle compressed string.
+   * Turns a string into a Zappy compressed string.
    *
    * @param str A string.
-   * @return A Twaddle compressed string.
+   * @return A Zappy compressed string.
    */
   public encode(str: string): string {
     return this.stringCollector(this.base64BytesToBase64Alphabet(this.bytesToBase64Bytes(this.stringToCompressedBytes(str))))
   }
 
   /**
-   * Turns a Twaddle compressed string into a string.
+   * Turns a Zappy compressed string into a string.
    *
-   * @param str A Twaddle compressed string.
+   * @param str A Zappy compressed string.
    * @return Expanded string or null.
    * @throws Error if it's an invalid base64 string, unless throwOnDecodeErrors is false.
    */
