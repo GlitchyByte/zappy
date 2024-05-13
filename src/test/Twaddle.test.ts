@@ -22,6 +22,14 @@ describe("Twaddle", () => {
 
     test("base64 malformed check", () => {
       const twaddle = new Twaddle(null)
+      let decoded = twaddle.base64StringDecode("aGVsb@8") // Wrong character.
+      expect(decoded).toBeNull()
+      decoded = twaddle.base64StringDecode("aGVsbG8c1") // Wrong length.
+      expect(decoded).toBeNull()
+    })
+
+    test("base64 malformed check with exception", () => {
+      const twaddle = new Twaddle(null, true)
       expect(() => {
         // @ts-ignore
         const decoded = twaddle.base64StringDecode("aGVsb@8") // Wrong character.
@@ -38,6 +46,20 @@ describe("Twaddle", () => {
       const twaddle = new Twaddle(null)
       const encoded = twaddle.encode("")
       expect(encoded).toBe("")
+    })
+
+    test("malformed check", () => {
+      const twaddle = new Twaddle(null)
+      const decoded = twaddle.decode("c")
+      expect(decoded).toBeNull()
+    })
+
+    test("malformed check with exception", () => {
+      const twaddle = new Twaddle(null, true)
+      expect(() => {
+        // @ts-ignore
+        const decoded = twaddle.decode("c__")
+      }).toThrow()
     })
 
     test("repeated characters", () => {

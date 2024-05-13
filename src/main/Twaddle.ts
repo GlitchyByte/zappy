@@ -29,6 +29,7 @@ export class Twaddle {
     [45, 62], [95, 63]
   ])
 
+  public readonly throwOnDecodeErrors: boolean
   private readonly contractions = new Map<number, Map<number, Uint8Array>>()
   private readonly textEncoder = new TextEncoder()
   private textDecoder: TextDecoder | null = null
@@ -42,8 +43,12 @@ export class Twaddle {
    *          If source is null (and it has to be explicit by design), then only the default
    *          contractions are used. It is highly recommended users of this class add their
    *          own contractions.
+   * @param throwOnDecodeErrors Flag to indicate if the object should throw exceptions when
+   *          it finds errors during decoding. If false, the default, decoding errors will
+   *          simply produce a null output.
    */
-  public constructor(source: Map<number, string[]> | null) {
+  public constructor(source: Map<number, string[]> | null, throwOnDecodeErrors = false) {
+    this.throwOnDecodeErrors = throwOnDecodeErrors
     if (source === null) {
       source = new Map<number, string[]>()
     } else {
@@ -218,12 +223,19 @@ export class Twaddle {
    * <p>Expects encoding with "-" and "_", and no padding.
    *
    * @param str Base64 string.
-   * @return The decoded string.
-   * @throws Error if it's an invalid base64 string.
+   * @return The decoded string or null.
+   * @throws Error if it's an invalid base64 string, unless throwOnDecodeErrors is false.
    */
-  public base64StringDecode(str: string): string {
+  public base64StringDecode(str: string): string | null {
     this.textDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
-    return this.stringCollector(this.bytesToUtf8Characters(this.base64BytesToBytes(this.stringToUtf8Bytes(str))))
+    if (this.throwOnDecodeErrors) {
+      return this.stringCollector(this.bytesToUtf8Characters(this.base64BytesToBytes(this.stringToUtf8Bytes(str))))
+    }
+    try {
+      return this.stringCollector(this.bytesToUtf8Characters(this.base64BytesToBytes(this.stringToUtf8Bytes(str))))
+    } catch (e) {
+      return null
+    }
   }
 
   private *stringToCompressedBytes(str: string): BytesGenerator {
@@ -589,10 +601,18 @@ export class Twaddle {
    * Turns a Twaddle compressed string into a string.
    *
    * @param str A Twaddle compressed string.
-   * @return Expanded string.
+   * @return Expanded string or null.
+   * @throws Error if it's an invalid base64 string, unless throwOnDecodeErrors is false.
    */
-  public decode(str: string): string {
+  public decode(str: string): string | null {
     this.textDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
-    return this.stringCollector(this.compressedBytesToString(this.base64BytesToBytes(this.stringToUtf8Bytes(str))))
+    if (this.throwOnDecodeErrors) {
+      return this.stringCollector(this.compressedBytesToString(this.base64BytesToBytes(this.stringToUtf8Bytes(str))))
+    }
+    try {
+      return this.stringCollector(this.compressedBytesToString(this.base64BytesToBytes(this.stringToUtf8Bytes(str))))
+    } catch (e) {
+      return null
+    }
   }
 }
