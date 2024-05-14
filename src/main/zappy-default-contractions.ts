@@ -38,6 +38,7 @@ export const defaultContractions = new Map<number, string[]>([
     ".org",
     ".net",
     ".edu",
-    ".io"
+    ".io",
+    ".gg"
   ]]
 ])

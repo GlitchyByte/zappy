@@ -602,7 +602,7 @@ export class Zappy {
    *
    * @param str A Zappy compressed string.
    * @return Expanded string or null.
-   * @throws Error if it's an invalid base64 string, unless throwOnDecodeErrors is false.
+   * @throws Error if it's an invalid Zappy string, unless throwOnDecodeErrors is false.
    */
   public decode(str: string): string | null {
     this.textDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })

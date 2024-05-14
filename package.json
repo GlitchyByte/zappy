@@ -1,10 +1,11 @@
 {
-  "name": "zappy",
-  "version": "1.0.0",
+  "name": "@glitchybyte/zappy",
+  "version": "0.2.0",
   "author": "GlitchyByte",
   "license": "Apache-2.0",
   "description": "Lightweight library for compressing and encoding web-related text (json, urls, etc.) into a URL-safe format for efficient transport.",
   "keywords": [
+    "text",
     "json",
     "compression",
     "url-safe",
@@ -22,9 +23,14 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
-    "testMatch": [ "<rootDir>/src/test/**/*.test.ts" ],
+    "testMatch": [
+      "<rootDir>/src/test/**/*.test.ts"
+    ],
     "collectCoverage": true,
-    "coverageReporters": [ "lcov", "text" ]
+    "coverageReporters": [
+      "lcov",
+      "text"
+    ]
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
