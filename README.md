@@ -1,6 +1,6 @@
 # Zappy
 
-![Version](https://img.shields.io/badge/Version-0.2.0-blue)
+![Version](https://img.shields.io/badge/Version-1.0.0-blue)
 ![Spec](https://img.shields.io/badge/Spec-1.0.0-cyan)
 
 Lightweight library for compressing and encoding web-related text
@@ -30,13 +30,28 @@ even invalid. Keep this in mind when decoding and handle these cases
 accordingly. That is, always sanitize your (decoded) output and handle
 decoding error conditions.
 
-[Read the spec here.](https://github.com/glitchybyte/zappy/SPEC.md)
+[Read the spec here.](https://github.com/GlitchyByte/zappy/blob/main/SPEC.md)
+
+# API
+
+```ts
+// Constructor.
+Zappy(source: Map<number, string[]> | null, throwOnDecodeErrors = false)
+
+// Base64 string encode/decode.
+base64StringEncode(str: string): string
+base64StringDecode(str: string): string | null
+
+// Zappy encode/decode.
+encode(str: string): string
+decode(str: string): string | null
+```
 
 # How to use
 
 ### Add to your project
 
-npm install @glitchybyte/zappy
+    npm install @glitchybyte/zappy
 
 ### Define contraction tables
 
@@ -51,7 +66,7 @@ Tables 1-17 allow 256 entries each. Entries can have a minimum of 3
 characters (or 3 bytes when converted to UTF-8).
 
 Developer defined contraction tables are overlaid onto
-[default tables](https://github.com/glitchybyte/zappy/src/main/zappy-default-contractions.ts).
+[default tables](https://github.com/GlitchyByte/zappy/blob/main/src/main/zappy-default-contractions.ts).
 There is a default table 0 specialized in json, and a default
 table 16 with common strings.
 

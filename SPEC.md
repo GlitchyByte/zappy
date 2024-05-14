@@ -20,7 +20,7 @@
 
 #### bit 5
 
-* 0: Blob. Take remainder bits (0-4) as byte `count`<sup>1</sup>. Take
+* 0: Blob<sup>1</sup>. Take remainder bits (0-4) as byte `count`. Take
   next `count` bytes as-is.
 * 1: Repeat. Take remainder bits (0-4) as repeat count. Take the next
   byte as-is is and repeat it.

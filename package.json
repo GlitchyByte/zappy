@@ -1,6 +1,6 @@
 {
   "name": "@glitchybyte/zappy",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "author": "GlitchyByte",
   "license": "Apache-2.0",
   "description": "Lightweight library for compressing and encoding web-related text (json, urls, etc.) into a URL-safe format for efficient transport.",
