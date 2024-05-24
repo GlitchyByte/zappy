@@ -1,20 +1,20 @@
 # Spec for nerds
 
-![Spec](https://img.shields.io/badge/Spec-1.0.0-darkcyan)
+![Spec](https://img.shields.io/badge/Spec-1.1.0-darkcyan)
 
 ## Each byte:
 
 #### bit 7
 
 * 0: Take this byte as ASCII.
-* 1: This is a compressed instruction.
+* 1: This is a compressed instruction. ↓
 
 ### Compressed instruction:
 
 #### bit 6
 
-* 0: This is a level 1 compressed instruction.
-* 1: This is a level 2 compressed instruction.
+* 0: This is a level 1 compressed instruction. ↓
+* 1: This is a level 2 compressed instruction. ↓
 
 ### Level 1 compressed instruction:
 
@@ -29,14 +29,32 @@
 
 #### bit 5
 
-* 0: Unsigned integer. Take remainder bits (0-4) as byte count (only 1,
+* 0: Unsigned integer. ↓
+* 1: Contraction lookup. ↓
+
+### Unsigned integer:
+
+#### bit4
+
+* 0: Decimal integer. Take remainder bits (0-3) as byte count (only 1,
   2, and 4 are valid values). Take next bytes as UInt8, UInt16, or
   UInt32<sup>2</sup>.
-* 1: Contraction lookup.
+* 1: Hexadecimal integer. ↓
+
+### Hexadecimal integer:
+
+#### bit 3
+
+* 0: Uppercase hexadecimal integer. Take remainder bits (0-2) as byte
+  count (only 2 and 4 are valid values). Take next bytes as UInt16 or
+  UInt32<sup>2</sup>.
+* 1: Lowercase hexadecimal integer. Take remainder bits (0-2) as byte
+  count (only 2 and 4 are valid values). Take next bytes as UInt16 or
+  UInt32<sup>2</sup>.
 
 ### Contraction lookup:
 
-#### bit 4:
+#### bit 4
 
 * 0: Fast lookup! Take remainder bits (0-3) as index on table 0.
 * 1: Table lookup. Take remainder bits (0-3) as table id, and next byte
