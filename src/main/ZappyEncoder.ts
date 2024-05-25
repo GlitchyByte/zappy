@@ -24,208 +24,281 @@ export class ZappyEncoder extends ZappyBase64StringEncoder {
     this.contractions = contractions
   }
 
-  private *stringToCompressedBytes(str: string): BytesGenerator {
-    const isAscii = (byte: number): boolean => {
-      return (byte & 0x80) === 0
-    }
-
-    const isDigit = (byte: number): boolean => {
-      return (byte >= 0x30) && (byte <= 0x39) // [0..9]
-    }
-
-    // const isHexDigit = (byte: number): boolean => {
-    //   return ((byte >= 0x30) && (byte <= 0x39)) || // [0..9]
-    //     ((byte >= 0x41) && (byte <= 0x46)) ||      // [A..F]
-    //     ((byte >= 0x61) && (byte <= 0x66))         // [a..f]
-    // }
-
-    const addUnsignedIntegerToken = (compressed: GByteBuffer, source: Uint8Array, index: number): number => {
-      // FIXME JS BUG: Can't have an unsigned 32bit int, if bit 31 is set JS makes it negative.
-      //  So we'll only encode numbers up to 31 bits long. Though the problem only shows when
-      //  decoding, we prevent encoding so we don't manifest the bug later.
-      const maxNumber = 0x7fffffff
-      let count = 1
-      let more: boolean
-      let value = source[index] - 0x30
-      do {
-        const walker = index + count
-        if (walker >= source.length) {
-          break
+  private addContractionToken(compressed: GByteBuffer, source: Uint8Array, index: number): number {
+    const findLookupIndex = (lookup: Map<number, Uint8Array>, source: Uint8Array, index: number): number | null => {
+      for (const [ lookupIndex, bytes ] of lookup) {
+        if (bytes.length > (source.length - index)) {
+          continue
         }
-        const byte = source[walker]
-        more = isDigit(byte)
-        if (more) {
-          const newValue = (value * 10) + (byte - 0x30)
-          if (newValue > maxNumber) {
+        let found = true
+        for (let i = 0; i < bytes.length; ++i) {
+          if (bytes[i] !== source[index + i]) {
+            found = false
             break
           }
-          value = newValue
-          ++count
         }
-      } while (more)
-      if (value < 100) {
-        return 0
+        if (found) {
+          return lookupIndex
+        }
       }
-      let byteCount = 1
-      if (value > 0xffff) {
-        byteCount = 4
-      } else if (value > 0xff) {
-        byteCount = 2
-      }
-      const token = 0xc0 | byteCount
-      compressed.appendUInt8(token)
-      switch (byteCount) {
-        case 4:
-          compressed.appendUInt32(value)
-          break
-        case 2:
-          compressed.appendUInt16(value)
-          break
-        default:
-          compressed.appendUInt8(value)
-      }
-      return count
+      return null
     }
 
-    const addAsciiToken = (compressed: GByteBuffer, source: Uint8Array, index: number): number => {
-      compressed.appendUInt8(source[index])
-      return 1
+    for (let tableId = 16; tableId >= 0; --tableId) {
+      const lookup = this.contractions.get(tableId)
+      if (lookup === undefined) {
+        continue
+      }
+      const lookupIndex = findLookupIndex(lookup, source, index)
+      if (lookupIndex === null) {
+        continue
+      }
+      if (tableId === 0) {
+        const token = 0xe0 | lookupIndex
+        compressed.appendUInt8(token)
+      } else {
+        const token = 0xf0 | (tableId - 1)
+        compressed.appendUInt8(token)
+        compressed.appendUInt8(lookupIndex)
+      }
+      return lookup.get(lookupIndex)!.length
     }
+    return 0
+  }
 
-    const addRepeatToken = (compressed: GByteBuffer, source: Uint8Array, index: number): number => {
-      const maxRepeatCount = 0x1f
-      let count = 1
-      let more: boolean
-      const value = source[index]
-      do {
-        if (count >= maxRepeatCount) {
-          break
-        }
-        const walker = index + count
-        if (walker >= source.length) {
-          break
-        }
-        const byte = source[walker]
-        more = value === byte
-        if (more) {
-          ++count
-        }
-      } while (more)
-      if (count < 3) {
-        return 0
+  private addRepeatToken(compressed: GByteBuffer, source: Uint8Array, index: number): number {
+    const maxRepeatCount = 0x1f
+    let count = 1
+    let more: boolean
+    const value = source[index]
+    do {
+      if (count >= maxRepeatCount) {
+        break
       }
-      const token = 0xa0 | count
-      compressed.appendUInt8(token)
-      compressed.appendUInt8(value)
-      return count
-    }
-
-    const addBlobToken = (compressed: GByteBuffer, source: Uint8Array, index: number): number => {
-      const maxBlobSize = 0x1f
-      let count = 1
-      let more: boolean
-      do {
-        if (count >= maxBlobSize) {
-          break
-        }
-        const walker = index + count
-        if (walker >= source.length) {
-          break
-        }
-        const byte = source[walker]
-        more = !isAscii(byte)
-        if (more) {
-          ++count
-        }
-      } while (more)
-      const token = 0x80 | count
-      compressed.appendUInt8(token)
-      for (let i = 0; i < count; ++i) {
-        compressed.appendUInt8(source[index + i])
+      const walker = index + count
+      if (walker >= source.length) {
+        break
       }
-      return count
-    }
-
-    const addContractionToken = (compressed: GByteBuffer, source: Uint8Array, index: number): number => {
-      const findLookupIndex = (lookup: Map<number, Uint8Array>, source: Uint8Array, index: number): number | null => {
-        for (const [ lookupIndex, bytes ] of lookup) {
-          if (bytes.length > (source.length - index)) {
-            continue
-          }
-          let found = true
-          for (let i = 0; i < bytes.length; ++i) {
-            if (bytes[i] !== source[index + i]) {
-              found = false
-              break
-            }
-          }
-          if (found) {
-            return lookupIndex
-          }
-        }
-        return null
+      const byte = source[walker]
+      more = value === byte
+      if (more) {
+        ++count
       }
-
-      for (let tableId = 16; tableId >= 0; --tableId) {
-        const lookup = this.contractions.get(tableId)
-        if (lookup === undefined) {
-          continue
-        }
-        const lookupIndex = findLookupIndex(lookup, source, index)
-        if (lookupIndex === null) {
-          continue
-        }
-        if (tableId === 0) {
-          const token = 0xe0 | lookupIndex
-          compressed.appendUInt8(token)
-        } else {
-          const token = 0xf0 | (tableId - 1)
-          compressed.appendUInt8(token)
-          compressed.appendUInt8(lookupIndex)
-        }
-        return lookup.get(lookupIndex)!.length
-      }
+    } while (more)
+    if (count < 3) {
       return 0
     }
+    const token = 0xa0 | count
+    compressed.appendUInt8(token)
+    compressed.appendUInt8(value)
+    return count
+  }
 
-    const addNextToken = (compressed: GByteBuffer, source: Uint8Array, index: number): number => {
-      {
-        // Contraction.
-        const used = addContractionToken(compressed, source, index)
-        if (used > 0) {
-          return used
-        }
+  private isDigit(byte: number): boolean {
+    return (byte >= 0x30) && (byte <= 0x39) // [0..9]
+  }
+
+  private isUppercaseHexDigit(byte: number): boolean {
+    return (byte >= 0x41) && (byte <= 0x46) // [A..F]
+  }
+
+  private isLowercaseHexDigit(byte: number): boolean {
+    return (byte >= 0x61) && (byte <= 0x66) // [a..f]
+  }
+
+  private addDecimalToken(compressed: GByteBuffer, source: Uint8Array, index: number, count: number) {
+    // FIXME JS BUG: Can't have an unsigned 32bit int, if bit 31 is set JS interprets it as a negative number.
+    //  So we'll only encode numbers up to 31 bits long. Though the problem only shows when decoding, we prevent
+    //  encoding so we don't manifest the bug later.
+    const maxNumber = 0x7fffffff
+    let digit = 0
+    let value = 0
+    while (digit < count) {
+      const byte = source[index + digit]
+      const newValue = (value * 10) + (byte - 0x30)
+      if (newValue > maxNumber) {
+        break
       }
-      {
-        // Repeated.
-        const used = addRepeatToken(compressed, source, index)
-        if (used > 0) {
-          return used
-        }
-      }
-      const byte = source[index]
-      // Check for (0..9] || [a..f] || [A..F].
-      if (((byte > 0x30) && (byte <= 0x39)) /*|| ((byte >= 0x41) && (byte <= 0x46)) || ((byte >= 0x61) && (byte <= 0x66))*/) {
-        // Unsigned integer.
-        const used = addUnsignedIntegerToken(compressed, source, index)
-        if (used > 0) {
-          return used
-        }
-      }
-      if (isAscii(byte)) {
-        // ASCII. Take as-is.
-        return addAsciiToken(compressed, source, index)
-      }
-      // Non-ASCII. Take as-is as a group.
-      return addBlobToken(compressed, source, index)
+      value = newValue
+      ++digit
     }
+    // Minimum encoding size is 2 bytes (token + UInt8). So we do not encode numbers under 100 which are
+    // 2 bytes to start with in ASCII.
+    if (value < 100) {
+      return 0
+    }
+    let byteCount = 1
+    if (value > 0xffff) {
+      byteCount = 4
+    } else if (value > 0xff) {
+      byteCount = 2
+    }
+    const token = 0xc0 | byteCount
+    compressed.appendUInt8(token)
+    switch (byteCount) {
+      case 4:
+        compressed.appendUInt32(value)
+        break
+      case 2:
+        compressed.appendUInt16(value)
+        break
+      default:
+        compressed.appendUInt8(value)
+    }
+    return count
+  }
 
+  private addHexadecimalToken(compressed: GByteBuffer, source: Uint8Array, index: number, count: number, isUppercase: boolean) {
+    let digit = 0
+    let value = 0
+    while (digit < count) {
+      const byte = source[index + digit]
+      let digitValue = 0
+      if (this.isDigit(byte)) {
+        digitValue = byte - 0x30
+      } else if (isUppercase) {
+        digitValue = 0x0a + (byte - 0x41)
+      } else {
+        digitValue = 0x0a + (byte - 0x61)
+      }
+      value = (value * 0x10) + digitValue
+      ++digit
+    }
+    // Minimum encoding size is 3 bytes (token + UInt16). So we do not encode hex numbers under 0x1000 which are
+    // 3 bytes to start with in ASCII.
+    if (value < 0x1000) {
+      return 0
+    }
+    const byteCount = value > 0xffff ? 4 : 2
+    const token = (isUppercase ? 0xd0 : 0xd8) | byteCount
+    compressed.appendUInt8(token)
+    switch (byteCount) {
+      case 4:
+        compressed.appendUInt32(value)
+        break
+      default:
+        compressed.appendUInt16(value)
+    }
+    return count
+  }
+
+  private addUnsignedIntegerToken(compressed: GByteBuffer, source: Uint8Array, index: number): number {
+    // Collect up to 10 decimal or 8 hex.
+    let count = 1
+    let byte = source[index]
+    let isUppercase = this.isUppercaseHexDigit(byte)
+    let isHex = isUppercase || this.isLowercaseHexDigit(byte)
+    while (true) {
+      const walker = index + count
+      if ((walker >= source.length) || (isHex && (count >= 8)) || (!isHex && (count >= 10))) {
+        break
+      }
+      byte = source[walker]
+      if (this.isDigit(byte)) {
+        ++count
+        continue
+      }
+      if (isHex) {
+        if (isUppercase && this.isUppercaseHexDigit(byte)) {
+          ++count
+          continue
+        }
+        if (!isUppercase && this.isLowercaseHexDigit(byte)) {
+          ++count
+          continue
+        }
+        break
+      }
+      if (this.isUppercaseHexDigit(byte)) {
+        isHex = true
+        isUppercase = true
+        ++count
+        continue
+      }
+      if (this.isLowercaseHexDigit(byte)) {
+        isHex = true
+        ++count
+      }
+    }
+    return isHex ?
+      this.addHexadecimalToken(compressed, source, index, count, isUppercase) :
+      this.addDecimalToken(compressed, source, index, count)
+  }
+
+  private isAscii(byte: number): boolean {
+    return (byte & 0x80) === 0
+  }
+
+  private addAsciiToken(compressed: GByteBuffer, source: Uint8Array, index: number): number {
+    compressed.appendUInt8(source[index])
+    return 1
+  }
+
+  private addBlobToken(compressed: GByteBuffer, source: Uint8Array, index: number): number {
+    const maxBlobSize = 0x1f
+    let count = 1
+    let more: boolean
+    do {
+      if (count >= maxBlobSize) {
+        break
+      }
+      const walker = index + count
+      if (walker >= source.length) {
+        break
+      }
+      const byte = source[walker]
+      more = !this.isAscii(byte)
+      if (more) {
+        ++count
+      }
+    } while (more)
+    const token = 0x80 | count
+    compressed.appendUInt8(token)
+    for (let i = 0; i < count; ++i) {
+      compressed.appendUInt8(source[index + i])
+    }
+    return count
+  }
+
+  private addNextToken(compressed: GByteBuffer, source: Uint8Array, index: number): number {
+    {
+      // Contraction.
+      const used = this.addContractionToken(compressed, source, index)
+      if (used > 0) {
+        return used
+      }
+    }
+    {
+      // Repeated.
+      const used = this.addRepeatToken(compressed, source, index)
+      if (used > 0) {
+        return used
+      }
+    }
+    const byte = source[index]
+    // Check for (0..9] || [A..F] || [a..f]
+    if (((byte > 0x30) && (byte <= 0x39)) || ((byte >= 0x41) && (byte <= 0x46)) || ((byte >= 0x61) && (byte <= 0x66))) {
+      // Unsigned integer.
+      const used = this.addUnsignedIntegerToken(compressed, source, index)
+      if (used > 0) {
+        return used
+      }
+    }
+    if (this.isAscii(byte)) {
+      // ASCII. Take as-is.
+      return this.addAsciiToken(compressed, source, index)
+    }
+    // Non-ASCII. Take as-is as a group.
+    return this.addBlobToken(compressed, source, index)
+  }
+
+  private *stringToCompressedBytes(str: string): BytesGenerator {
     const source = this.textEncoder.encode(str)
     const compressed = GByteBuffer.create()
     let index = 0
     while (index < source.length) {
       compressed.reset()
-      index += addNextToken(compressed, source, index)
+      index += this.addNextToken(compressed, source, index)
       yield compressed.view()
     }
   }
