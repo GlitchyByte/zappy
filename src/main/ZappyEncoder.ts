@@ -12,6 +12,8 @@ import { GByteBuffer } from "./GByteBuffer"
  */
 export class ZappyEncoder extends ZappyBase64StringEncoder {
 
+  private static readonly MAX_DECIMAL = 0x7fffffff
+
   private readonly contractions: Map<number, Map<number, Uint8Array>>
 
   /**
@@ -110,13 +112,12 @@ export class ZappyEncoder extends ZappyBase64StringEncoder {
     // FIXME JS BUG: Can't have an unsigned 32bit int, if bit 31 is set JS interprets it as a negative number.
     //  So we'll only encode numbers up to 31 bits long. Though the problem only shows when decoding, we prevent
     //  encoding so we don't manifest the bug later.
-    const maxNumber = 0x7fffffff
     let digit = 0
     let value = 0
     while (digit < count) {
       const byte = source[index + digit]
       const newValue = (value * 10) + (byte - 0x30)
-      if (newValue > maxNumber) {
+      if (newValue > ZappyEncoder.MAX_DECIMAL) {
         break
       }
       value = newValue
@@ -149,6 +150,9 @@ export class ZappyEncoder extends ZappyBase64StringEncoder {
   }
 
   private addHexadecimalToken(compressed: GByteBuffer, source: Uint8Array, index: number, count: number, isUppercase: boolean) {
+    // FIXME JS BUG: Can't have an unsigned 32bit int, if bit 31 is set JS interprets it as a negative number.
+    //  So we'll only encode numbers up to 31 bits long. Though the problem only shows when decoding, we prevent
+    //  encoding so we don't manifest the bug later.
     let digit = 0
     let value = 0
     while (digit < count) {
@@ -160,6 +164,9 @@ export class ZappyEncoder extends ZappyBase64StringEncoder {
         digitValue = 0x0a + (byte - 0x41)
       } else {
         digitValue = 0x0a + (byte - 0x61)
+      }
+      if ((value & 0x08000000) !== 0) {
+        break
       }
       value = (value * 0x10) + digitValue
       ++digit
@@ -179,7 +186,7 @@ export class ZappyEncoder extends ZappyBase64StringEncoder {
       default:
         compressed.appendUInt16(value)
     }
-    return count
+    return digit
   }
 
   private addUnsignedIntegerToken(compressed: GByteBuffer, source: Uint8Array, index: number): number {

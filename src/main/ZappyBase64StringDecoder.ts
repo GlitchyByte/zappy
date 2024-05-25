@@ -20,7 +20,7 @@ export class ZappyBase64StringDecoder extends ZappyCommonBase {
   ])
 
   public readonly throwOnDecodeErrors: boolean
-  protected textDecoder: TextDecoder | null = null
+  protected textDecoder!: TextDecoder
 
   /**
    * Creates a Zappy base64 decoder.
@@ -84,7 +84,7 @@ export class ZappyBase64StringDecoder extends ZappyCommonBase {
       if (bytes.length === 0) {
         continue
       }
-      const str = this.textDecoder!.decode(bytes, { stream: true })
+      const str = this.textDecoder.decode(bytes, { stream: true })
       if (str.length !== 0) {
         yield str
       }

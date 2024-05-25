@@ -178,7 +178,7 @@ describe("Zappy", () => {
       describe("Hexadecimal", () => {
         test("mixed case should not contract", () => {
           const zappy = new Zappy(null)
-          const original = "2b7C0De"
+          const original = "2b7CaDe"
           const base64Encoded = zappy.base64StringEncode(original)
           const encoded = zappy.encode(original)
           expect(encoded).not.toBe(original)
@@ -223,7 +223,18 @@ describe("Zappy", () => {
 
           test("with leading zeroes", () => {
             const zappy = new Zappy(null)
-            const original = "0012A"
+            const original = "0012A0"
+            const base64Encoded = zappy.base64StringEncode(original)
+            const encoded = zappy.encode(original)
+            expect(encoded).not.toBe(original)
+            expect(encoded.length).toBeLessThan(base64Encoded.length)
+            const decoded = zappy.decode(encoded)
+            expect(decoded).toBe(original)
+          })
+
+          test("long number", () => {
+            const zappy = new Zappy(null)
+            const original = "E0012A0F92CC7"
             const base64Encoded = zappy.base64StringEncode(original)
             const encoded = zappy.encode(original)
             expect(encoded).not.toBe(original)
@@ -268,7 +279,18 @@ describe("Zappy", () => {
 
           test("with leading zeroes", () => {
             const zappy = new Zappy(null)
-            const original = "0012a"
+            const original = "0012a0"
+            const base64Encoded = zappy.base64StringEncode(original)
+            const encoded = zappy.encode(original)
+            expect(encoded).not.toBe(original)
+            expect(encoded.length).toBeLessThan(base64Encoded.length)
+            const decoded = zappy.decode(encoded)
+            expect(decoded).toBe(original)
+          })
+
+          test("long number", () => {
+            const zappy = new Zappy(null)
+            const original = "e0012a0f92cc7"
             const base64Encoded = zappy.base64StringEncode(original)
             const encoded = zappy.encode(original)
             expect(encoded).not.toBe(original)
