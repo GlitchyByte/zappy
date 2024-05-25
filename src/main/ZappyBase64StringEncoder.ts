@@ -3,6 +3,11 @@
 
 import { StringGenerator, BytesGenerator, ZappyCommonBase } from "./ZappyCommonBase"
 
+/**
+ * Base64 string encoder.
+ *
+ * <p>Alphabet includes '-' and '_'. Does not produce padding characters.
+ */
 export class ZappyBase64StringEncoder extends ZappyCommonBase {
 
   /**

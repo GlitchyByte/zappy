@@ -3,6 +3,9 @@
 
 import { StringGenerator, BytesGenerator, ZappyCommonBase } from "./ZappyCommonBase"
 
+/**
+ * Base64 string decoder.
+ */
 export class ZappyBase64StringDecoder extends ZappyCommonBase {
 
   /**
@@ -26,10 +29,10 @@ export class ZappyBase64StringDecoder extends ZappyCommonBase {
    * Creates a Zappy base64 decoder.
    *
    * @param throwOnDecodeErrors Flag to indicate if the object should throw exceptions when
-   *          it finds errors during decoding. If false, the default, decoding errors will
-   *          simply produce a null output.
+   *          it finds errors during decoding. If false, decoding errors will simply produce
+   *          a null output.
    */
-  public constructor(throwOnDecodeErrors = false) {
+  public constructor(throwOnDecodeErrors: boolean) {
     super()
     this.throwOnDecodeErrors = throwOnDecodeErrors
   }

@@ -6,7 +6,7 @@ import { BytesGenerator } from "./ZappyCommonBase"
 import { GByteBuffer } from "./GByteBuffer"
 
 /**
- * Encoding and decoding compressed web text for transport.
+ * Zappy encoder.
  *
  * <p>It uses base64 as the message encoding, but the internal bytes are compressed.
  */

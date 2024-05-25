@@ -6,7 +6,7 @@ import { StringGenerator, BytesGenerator } from "./ZappyCommonBase"
 import { GByteBuffer } from "./GByteBuffer"
 
 /**
- * Encoding and decoding compressed web text for transport.
+ * Zappy decoder.
  *
  * <p>It uses base64 as the message encoding, but the internal bytes are compressed.
  */
@@ -26,10 +26,10 @@ export class ZappyDecoder extends ZappyBase64StringDecoder {
    *
    * @param contractions The contractions used for aiding compression.
    * @param throwOnDecodeErrors Flag to indicate if the object should throw exceptions when
-   *          it finds errors during decoding. If false, the default, decoding errors will
-   *          simply produce a null output.
+   *          it finds errors during decoding. If false, decoding errors will simply produce
+   *          a null output.
    */
-  public constructor(contractions: Map<number, Map<number, Uint8Array>>, throwOnDecodeErrors = false) {
+  public constructor(contractions: Map<number, Map<number, Uint8Array>>, throwOnDecodeErrors: boolean) {
     super(throwOnDecodeErrors)
     this.contractions = contractions
   }

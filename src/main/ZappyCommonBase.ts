@@ -4,6 +4,9 @@
 export type StringGenerator = Generator<string, void, void>
 export type BytesGenerator = Generator<Uint8Array, void, void>
 
+/**
+ * Common base class for Zappy encoders and decoders.
+ */
 export class ZappyCommonBase {
 
   protected readonly textEncoder = new TextEncoder()
