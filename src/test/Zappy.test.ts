@@ -175,109 +175,109 @@ describe("Zappy", () => {
           expect(decoded).toBe(original)
         })
       })
-      // describe("Hexadecimal", () => {
-      //   test("mixed case should not contract", () => {
-      //     const zappy = new Zappy(null)
-      //     const original = "2b7C0De"
-      //     const base64Encoded = zappy.base64StringEncode(original)
-      //     const encoded = zappy.encode(original)
-      //     expect(encoded).not.toBe(original)
-      //     expect(encoded.length).toBe(base64Encoded.length)
-      //     const decoded = zappy.decode(encoded)
-      //     expect(decoded).toBe(original)
-      //   })
-      //
-      //   describe("Uppercase", () => {
-      //     test("less than 0x1000 no contraction", () => {
-      //       const zappy = new Zappy(null)
-      //       const original = ":2B7"
-      //       const base64Encoded = zappy.base64StringEncode(original)
-      //       const encoded = zappy.encode(original)
-      //       expect(encoded).not.toBe(original)
-      //       expect(encoded.length).toBe(base64Encoded.length)
-      //       const decoded = zappy.decode(encoded)
-      //       expect(decoded).toBe(original)
-      //     })
-      //
-      //     test("2 byte contraction", () => {
-      //       const zappy = new Zappy(null)
-      //       const original = "8E2A"
-      //       const base64Encoded = zappy.base64StringEncode(original)
-      //       const encoded = zappy.encode(original)
-      //       expect(encoded).not.toBe(original)
-      //       expect(encoded.length).toBeLessThan(base64Encoded.length)
-      //       const decoded = zappy.decode(encoded)
-      //       expect(decoded).toBe(original)
-      //     })
-      //
-      //     test("4 byte contraction", () => {
-      //       const zappy = new Zappy(null)
-      //       const original = "::7FFFFFFF"
-      //       const base64Encoded = zappy.base64StringEncode(original)
-      //       const encoded = zappy.encode(original)
-      //       expect(encoded).not.toBe(original)
-      //       expect(encoded.length).toBeLessThan(base64Encoded.length)
-      //       const decoded = zappy.decode(encoded)
-      //       expect(decoded).toBe(original)
-      //     })
-      //
-      //     test("with leading zeroes", () => {
-      //       const zappy = new Zappy(null)
-      //       const original = "0012A"
-      //       const base64Encoded = zappy.base64StringEncode(original)
-      //       const encoded = zappy.encode(original)
-      //       expect(encoded).not.toBe(original)
-      //       expect(encoded.length).toBeLessThan(base64Encoded.length)
-      //       const decoded = zappy.decode(encoded)
-      //       expect(decoded).toBe(original)
-      //     })
-      //   })
-      //   describe("Lowercase", () => {
-      //     test("less than 0x1000 no contraction", () => {
-      //       const zappy = new Zappy(null)
-      //       const original = ":2b7"
-      //       const base64Encoded = zappy.base64StringEncode(original)
-      //       const encoded = zappy.encode(original)
-      //       expect(encoded).not.toBe(original)
-      //       expect(encoded.length).toBe(base64Encoded.length)
-      //       const decoded = zappy.decode(encoded)
-      //       expect(decoded).toBe(original)
-      //     })
-      //
-      //     test("2 byte contraction", () => {
-      //       const zappy = new Zappy(null)
-      //       const original = "8e2a"
-      //       const base64Encoded = zappy.base64StringEncode(original)
-      //       const encoded = zappy.encode(original)
-      //       expect(encoded).not.toBe(original)
-      //       expect(encoded.length).toBeLessThan(base64Encoded.length)
-      //       const decoded = zappy.decode(encoded)
-      //       expect(decoded).toBe(original)
-      //     })
-      //
-      //     test("4 byte contraction", () => {
-      //       const zappy = new Zappy(null)
-      //       const original = "::7fffffff"
-      //       const base64Encoded = zappy.base64StringEncode(original)
-      //       const encoded = zappy.encode(original)
-      //       expect(encoded).not.toBe(original)
-      //       expect(encoded.length).toBeLessThan(base64Encoded.length)
-      //       const decoded = zappy.decode(encoded)
-      //       expect(decoded).toBe(original)
-      //     })
-      //
-      //     test("with leading zeroes", () => {
-      //       const zappy = new Zappy(null)
-      //       const original = "0012a"
-      //       const base64Encoded = zappy.base64StringEncode(original)
-      //       const encoded = zappy.encode(original)
-      //       expect(encoded).not.toBe(original)
-      //       expect(encoded.length).toBeLessThan(base64Encoded.length)
-      //       const decoded = zappy.decode(encoded)
-      //       expect(decoded).toBe(original)
-      //     })
-      //   })
-      // })
+      describe("Hexadecimal", () => {
+        test("mixed case should not contract", () => {
+          const zappy = new Zappy(null)
+          const original = "2b7C0De"
+          const base64Encoded = zappy.base64StringEncode(original)
+          const encoded = zappy.encode(original)
+          expect(encoded).not.toBe(original)
+          expect(encoded.length).toBe(base64Encoded.length)
+          const decoded = zappy.decode(encoded)
+          expect(decoded).toBe(original)
+        })
+
+        describe("Uppercase", () => {
+          test("less than 0x1000 no contraction", () => {
+            const zappy = new Zappy(null)
+            const original = ":2B7"
+            const base64Encoded = zappy.base64StringEncode(original)
+            const encoded = zappy.encode(original)
+            expect(encoded).not.toBe(original)
+            expect(encoded.length).toBe(base64Encoded.length)
+            const decoded = zappy.decode(encoded)
+            expect(decoded).toBe(original)
+          })
+
+          test("2 byte contraction", () => {
+            const zappy = new Zappy(null)
+            const original = "8E2A"
+            const base64Encoded = zappy.base64StringEncode(original)
+            const encoded = zappy.encode(original)
+            expect(encoded).not.toBe(original)
+            expect(encoded.length).toBeLessThan(base64Encoded.length)
+            const decoded = zappy.decode(encoded)
+            expect(decoded).toBe(original)
+          })
+
+          test("4 byte contraction", () => {
+            const zappy = new Zappy(null)
+            const original = "::7FFFFFFF"
+            const base64Encoded = zappy.base64StringEncode(original)
+            const encoded = zappy.encode(original)
+            expect(encoded).not.toBe(original)
+            expect(encoded.length).toBeLessThan(base64Encoded.length)
+            const decoded = zappy.decode(encoded)
+            expect(decoded).toBe(original)
+          })
+
+          test("with leading zeroes", () => {
+            const zappy = new Zappy(null)
+            const original = "0012A"
+            const base64Encoded = zappy.base64StringEncode(original)
+            const encoded = zappy.encode(original)
+            expect(encoded).not.toBe(original)
+            expect(encoded.length).toBeLessThan(base64Encoded.length)
+            const decoded = zappy.decode(encoded)
+            expect(decoded).toBe(original)
+          })
+        })
+        describe("Lowercase", () => {
+          test("less than 0x1000 no contraction", () => {
+            const zappy = new Zappy(null)
+            const original = ":2b7"
+            const base64Encoded = zappy.base64StringEncode(original)
+            const encoded = zappy.encode(original)
+            expect(encoded).not.toBe(original)
+            expect(encoded.length).toBe(base64Encoded.length)
+            const decoded = zappy.decode(encoded)
+            expect(decoded).toBe(original)
+          })
+
+          test("2 byte contraction", () => {
+            const zappy = new Zappy(null)
+            const original = "8e2a"
+            const base64Encoded = zappy.base64StringEncode(original)
+            const encoded = zappy.encode(original)
+            expect(encoded).not.toBe(original)
+            expect(encoded.length).toBeLessThan(base64Encoded.length)
+            const decoded = zappy.decode(encoded)
+            expect(decoded).toBe(original)
+          })
+
+          test("4 byte contraction", () => {
+            const zappy = new Zappy(null)
+            const original = "::7fffffff"
+            const base64Encoded = zappy.base64StringEncode(original)
+            const encoded = zappy.encode(original)
+            expect(encoded).not.toBe(original)
+            expect(encoded.length).toBeLessThan(base64Encoded.length)
+            const decoded = zappy.decode(encoded)
+            expect(decoded).toBe(original)
+          })
+
+          test("with leading zeroes", () => {
+            const zappy = new Zappy(null)
+            const original = "0012a"
+            const base64Encoded = zappy.base64StringEncode(original)
+            const encoded = zappy.encode(original)
+            expect(encoded).not.toBe(original)
+            expect(encoded.length).toBeLessThan(base64Encoded.length)
+            const decoded = zappy.decode(encoded)
+            expect(decoded).toBe(original)
+          })
+        })
+      })
     })
 
     test("default contraction encode/decode json", () => {
