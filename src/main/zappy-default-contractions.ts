@@ -4,10 +4,10 @@
 /**
  * Default contractions for Zappy.
  *
- * <p>It is highly recommended developers using Zappy add their own contraction tables, or even
- * replace them completely.
+ * <p>It is highly recommended developers using Zappy add their own contraction tables,
+ * or even replace them completely.
  *
- * <p>These defaults are optimized for json messages.
+ * <p>These defaults are optimized for json messages and URLs.
  */
 export const defaultContractions = new Map<number, string[]>([
   [0, [ // Up to 16 entries.
@@ -39,6 +39,7 @@ export const defaultContractions = new Map<number, string[]>([
     ".net",
     ".edu",
     ".io",
+    ".dev",
     ".gg"
   ]]
 ])
