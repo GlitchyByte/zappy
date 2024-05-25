@@ -225,7 +225,9 @@ export class ZappyEncoder extends ZappyBase64StringEncoder {
       if (this.isLowercaseHexDigit(byte)) {
         isHex = true
         ++count
+        continue
       }
+      break
     }
     return isHex ?
       this.addHexadecimalToken(compressed, source, index, count, isUppercase) :
