@@ -1,29 +1,18 @@
 // Copyright 2024 GlitchyByte
 // SPDX-License-Identifier: Apache-2.0
 
-import { StringGenerator, BytesGenerator, ZappyCommonBase } from "./ZappyCommonBase"
+import { GByteBuffer } from "./GByteBuffer"
+import { GMath } from "./GMath"
 
 /**
  * Base64 string decoder.
  */
-export class ZappyBase64StringDecoder extends ZappyCommonBase {
-
-  /**
-   * Map to convert from base64 to byte values.
-   */
-  private static readonly base64Map = new Map<number, number>([
-    [65, 0], [66, 1], [67, 2], [68, 3], [69, 4], [70, 5], [71, 6], [72, 7], [73, 8], [74, 9],
-    [75, 10], [76, 11], [77, 12], [78, 13], [79, 14], [80, 15], [81, 16], [82, 17], [83, 18], [84, 19],
-    [85, 20], [86, 21], [87, 22], [88, 23], [89, 24], [90, 25],
-    [97, 26], [98, 27], [99, 28], [100, 29], [101, 30], [102, 31], [103, 32], [104, 33], [105, 34], [106, 35],
-    [107, 36], [108, 37], [109, 38], [110, 39], [111, 40], [112, 41], [113, 42], [114, 43], [115, 44], [116, 45],
-    [117, 46], [118, 47], [119, 48], [120, 49], [121, 50], [122, 51],
-    [48, 52], [49, 53], [50, 54], [51, 55], [52, 56], [53, 57], [54, 58], [55, 59], [56, 60], [57, 61],
-    [45, 62], [95, 63]
-  ])
+export class ZappyBase64StringDecoder {
 
   public readonly throwOnDecodeErrors: boolean
-  protected textDecoder!: TextDecoder
+  protected readonly textEncoder = new TextEncoder()
+  protected readonly textDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
+  private readonly base64Buffer = GByteBuffer.create()
 
   /**
    * Creates a Zappy base64 decoder.
@@ -33,69 +22,60 @@ export class ZappyBase64StringDecoder extends ZappyCommonBase {
    *          a null output.
    */
   public constructor(throwOnDecodeErrors: boolean) {
-    super()
     this.throwOnDecodeErrors = throwOnDecodeErrors
   }
 
-  protected *base64BytesToBytes(gen: BytesGenerator): BytesGenerator {
-    const buffer = new Uint8Array(4)
-    let bufferUsed = 0
-    const outputBytes = new Uint8Array(3)
-    const base64Decode = () => {
-      // Base64 decode.
-      // We have 4 6-bit bytes. Make 3 bytes out of them.
-      const decoded = bufferUsed === 4 ? outputBytes : new Uint8Array(bufferUsed - 1)
-      const b0 = buffer[0]
-      const b1 = buffer[1]
-      const b2 = bufferUsed > 2 ? buffer[2] : 0
-      const b3 = bufferUsed > 3 ? buffer[3] : 0
-      decoded[0] = (b0 << 2) | ((b1 & 0x30) >> 4)
-      if (bufferUsed > 2) {
-        decoded[1] = ((b1 & 0x0f) << 4) | ((b2 & 0x3c) >> 2)
-      }
-      if (bufferUsed > 3) {
-        decoded[2] = ((b2 & 0x03) << 6) | b3
-      }
-      return decoded
+  private base64ToByte(ch: string): number {
+    const chByte = ch.charCodeAt(0)
+    if ((chByte >= 65) && (chByte <=90)) {
+      return chByte - 65
     }
-    for (const bytes of gen) {
-      for (const byte of bytes) {
-        const fullByte = ZappyBase64StringDecoder.base64Map.get(byte)
-        if (fullByte === undefined) {
-          throw new Error("Invalid base64 value!")
-        }
-        buffer[bufferUsed++] = fullByte
-        if (bufferUsed === 4) {
-          const decoded = base64Decode()
-          bufferUsed = 0
-          yield decoded
-        }
-      }
+    if ((chByte >= 97) && (chByte <=122)) {
+      return chByte - 71
     }
-    if (bufferUsed === 0) {
-      return
-    } else if (bufferUsed === 1) {
+    if ((chByte >= 48) && (chByte <=57)) {
+      return chByte + 4
+    }
+    if (chByte === 45) {
+      return 62
+    }
+    if (chByte === 95) {
+      return 63
+    }
+    throw new Error("Invalid base64 character!")
+  }
+
+  protected base64AlphabetToBytes(str: string): Uint8Array {
+    // Base64 decode.
+    // We have 4 6-bit bytes. Make 3 bytes out of them.
+    const strLength = str.length
+    const bytes = this.base64Buffer
+    bytes.reset()
+    if ((strLength & 3) === 1) {
       throw new Error("Illegal number of bytes!")
     }
-    const decoded = base64Decode()
-    bufferUsed = 0
-    yield decoded
-  }
-
-  private *bytesToUtf8Characters(gen: BytesGenerator): StringGenerator {
-    for (const bytes of gen) {
-      if (bytes.length === 0) {
-        continue
+    let start = 0
+    while (start < strLength) {
+      const count = GMath.min(4, strLength - start)
+      const b0 = this.base64ToByte(str[start])
+      const b1 = this.base64ToByte(str[start + 1])
+      const d0 = (b0 << 2) | (b1 >> 4)
+      bytes.appendUInt8(d0)
+      if (count === 4) {
+        const b2 = this.base64ToByte(str[start + 2])
+        const d1 = ((b1 & 0x0f) << 4) | (b2 >> 2)
+        const b3 = this.base64ToByte(str[start + 3])
+        const d2 = ((b2 & 0x03) << 6) | b3
+        const word = (d2 << 8) | d1
+        bytes.appendUInt16(word)
+      } else if (count === 3) {
+        const b2 = this.base64ToByte(str[start + 2])
+        const d1 = ((b1 & 0x0f) << 4) | (b2 >> 2)
+        bytes.appendUInt8(d1)
       }
-      const str = this.textDecoder.decode(bytes, { stream: true })
-      if (str.length !== 0) {
-        yield str
-      }
+      start += count
     }
-  }
-
-  protected resetDecoder() {
-    this.textDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
+    return bytes.view()
   }
 
   /**
@@ -108,12 +88,13 @@ export class ZappyBase64StringDecoder extends ZappyCommonBase {
    * @throws Error if it's an invalid base64 string, unless throwOnDecodeErrors is false.
    */
   public base64StringDecode(str: string): string | null {
-    this.resetDecoder()
     if (this.throwOnDecodeErrors) {
-      return this.stringCollector(this.bytesToUtf8Characters(this.base64BytesToBytes(this.stringToUtf8Bytes(str))))
+      const bytes = this.base64AlphabetToBytes(str)
+      return this.textDecoder.decode(bytes)
     }
     try {
-      return this.stringCollector(this.bytesToUtf8Characters(this.base64BytesToBytes(this.stringToUtf8Bytes(str))))
+      const bytes = this.base64AlphabetToBytes(str)
+      return this.textDecoder.decode(bytes)
     } catch (e) {
       return null
     }

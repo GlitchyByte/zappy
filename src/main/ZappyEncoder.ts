@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ZappyBase64StringEncoder } from "./ZappyBase64StringEncoder"
-import { BytesGenerator } from "./ZappyCommonBase"
 import { GByteBuffer } from "./GByteBuffer"
 
 /**
@@ -15,6 +14,7 @@ export class ZappyEncoder extends ZappyBase64StringEncoder {
   private static readonly MAX_DECIMAL = 0x7fffffff
 
   private readonly contractions: Map<number, Map<number, Uint8Array>>
+  private readonly zappyBuffer = GByteBuffer.create()
 
   /**
    * Creates a Zappy encoder.
@@ -71,22 +71,18 @@ export class ZappyEncoder extends ZappyBase64StringEncoder {
   private addRepeatToken(compressed: GByteBuffer, source: Uint8Array, index: number): number {
     const maxRepeatCount = 0x1f
     let count = 1
-    let more: boolean
     const value = source[index]
-    do {
-      if (count >= maxRepeatCount) {
-        break
-      }
+    while (count < maxRepeatCount) {
       const walker = index + count
       if (walker >= source.length) {
         break
       }
       const byte = source[walker]
-      more = value === byte
-      if (more) {
-        ++count
+      if (value !== byte) {
+        break
       }
-    } while (more)
+      ++count
+    }
     if (count < 3) {
       return 0
     }
@@ -161,14 +157,14 @@ export class ZappyEncoder extends ZappyBase64StringEncoder {
       if (this.isDigit(byte)) {
         digitValue = byte - 0x30
       } else if (isUppercase) {
-        digitValue = 0x0a + (byte - 0x41)
+        digitValue = byte - 0x37 // 0x0a + (byte - 0x41)
       } else {
-        digitValue = 0x0a + (byte - 0x61)
+        digitValue = byte - 0x57 // 0x0a + (byte - 0x61)
       }
       if ((value & 0x08000000) !== 0) {
         break
       }
-      value = (value * 0x10) + digitValue
+      value = (value * 0x10) | digitValue
       ++digit
     }
     // Minimum encoding size is 3 bytes (token + UInt16). So we do not encode hex numbers under 0x1000 which are
@@ -195,9 +191,9 @@ export class ZappyEncoder extends ZappyBase64StringEncoder {
     let byte = source[index]
     let isUppercase = this.isUppercaseHexDigit(byte)
     let isHex = isUppercase || this.isLowercaseHexDigit(byte)
-    while (true) {
+    while ((isHex && (count < 8)) || (!isHex && (count < 10))) {
       const walker = index + count
-      if ((walker >= source.length) || (isHex && (count >= 8)) || (!isHex && (count >= 10))) {
+      if (walker >= source.length) {
         break
       }
       byte = source[walker]
@@ -217,12 +213,18 @@ export class ZappyEncoder extends ZappyBase64StringEncoder {
         break
       }
       if (this.isUppercaseHexDigit(byte)) {
+        if (count >= 8) {
+          break
+        }
         isHex = true
         isUppercase = true
         ++count
         continue
       }
       if (this.isLowercaseHexDigit(byte)) {
+        if (count >= 8) {
+          break
+        }
         isHex = true
         ++count
         continue
@@ -234,10 +236,6 @@ export class ZappyEncoder extends ZappyBase64StringEncoder {
       this.addDecimalToken(compressed, source, index, count)
   }
 
-  private isAscii(byte: number): boolean {
-    return (byte & 0x80) === 0
-  }
-
   private addAsciiToken(compressed: GByteBuffer, source: Uint8Array, index: number): number {
     compressed.appendUInt8(source[index])
     return 1
@@ -246,25 +244,23 @@ export class ZappyEncoder extends ZappyBase64StringEncoder {
   private addBlobToken(compressed: GByteBuffer, source: Uint8Array, index: number): number {
     const maxBlobSize = 0x1f
     let count = 1
-    let more: boolean
-    do {
-      if (count >= maxBlobSize) {
-        break
-      }
+    while (count < maxBlobSize) {
       const walker = index + count
       if (walker >= source.length) {
         break
       }
       const byte = source[walker]
-      more = !this.isAscii(byte)
-      if (more) {
-        ++count
+      if ((byte & 0x80) === 0) {
+        break
       }
-    } while (more)
+      ++count
+    }
     const token = 0x80 | count
     compressed.appendUInt8(token)
+    const start = compressed.length
+    compressed.setLength(start + count)
     for (let i = 0; i < count; ++i) {
-      compressed.appendUInt8(source[index + i])
+      compressed.setUInt8(start + i, source[index + i])
     }
     return count
   }
@@ -293,7 +289,7 @@ export class ZappyEncoder extends ZappyBase64StringEncoder {
         return used
       }
     }
-    if (this.isAscii(byte)) {
+    if ((byte & 0x80) === 0) {
       // ASCII. Take as-is.
       return this.addAsciiToken(compressed, source, index)
     }
@@ -301,15 +297,15 @@ export class ZappyEncoder extends ZappyBase64StringEncoder {
     return this.addBlobToken(compressed, source, index)
   }
 
-  private *stringToCompressedBytes(str: string): BytesGenerator {
+  private stringToCompressedBytes(str: string): Uint8Array {
     const source = this.textEncoder.encode(str)
-    const compressed = GByteBuffer.create()
+    const compressed = this.zappyBuffer
+    compressed.reset()
     let index = 0
     while (index < source.length) {
-      compressed.reset()
       index += this.addNextToken(compressed, source, index)
-      yield compressed.view()
     }
+    return compressed.view()
   }
 
   /**
@@ -319,6 +315,7 @@ export class ZappyEncoder extends ZappyBase64StringEncoder {
    * @return A Zappy compressed string.
    */
   public encode(str: string): string {
-    return this.stringCollector(this.base64BytesToBase64Alphabet(this.bytesToBase64Bytes(this.stringToCompressedBytes(str))))
+    const bytes = this.stringToCompressedBytes(str)
+    return this.bytesToBase64Alphabet(bytes)
   }
 }

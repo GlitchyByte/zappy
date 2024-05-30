@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { ZappyBase64StringDecoder } from "./ZappyBase64StringDecoder"
-import { StringGenerator, BytesGenerator } from "./ZappyCommonBase"
-import { GByteBuffer } from "./GByteBuffer"
+import { GByteBuffer, GByteBufferReader } from "./GByteBuffer"
+import { numberToHexBytes } from "./gutils"
 
 /**
  * Zappy decoder.
@@ -12,14 +12,8 @@ import { GByteBuffer } from "./GByteBuffer"
  */
 export class ZappyDecoder extends ZappyBase64StringDecoder {
 
-  private static readonly HEX_DIGITS_UPPERCASE = "0123456789ABCDEF"
-  private static readonly HEX_DIGITS_LOWERCASE = "0123456789abcdef"
-
   private readonly contractions: Map<number, Map<number, Uint8Array>>
-  private gen!: BytesGenerator
-  private buffer: Uint8Array | null = null
-  private bufferIndex = 0
-  private expanded = GByteBuffer.create()
+  private readonly zappyBuffer = GByteBuffer.create()
 
   /**
    * Creates a Zappy decoder.
@@ -34,113 +28,59 @@ export class ZappyDecoder extends ZappyBase64StringDecoder {
     this.contractions = contractions
   }
 
-  private getNextByte(): number | null {
-    if (this.buffer === null) {
-      do {
-        const item = this.gen.next()
-        if (item.done) {
-          return null
-        }
-        this.buffer = item.value
-        this.bufferIndex = 0
-      } while (this.buffer.length === 0)
-    }
-    const byte = this.buffer[this.bufferIndex]
-    ++this.bufferIndex
-    if (this.bufferIndex >= this.buffer.length) {
-      this.buffer = null
-    }
-    return byte
+  private resolveAsciiToken(decompressed: GByteBuffer, byte: number) {
+    decompressed.appendUInt8(byte)
   }
 
-  private getValueOfNextBytes(byteCount: number): number {
-    let value = 0
-    for (let i = 0; i < byteCount; ++i) {
-      const b = this.getNextByte()
-      if (b === null) {
-        throw new Error("Truncated message!")
-      }
-      value = (b << (i * 8)) | value
-    }
-    return value
-  }
-
-  private getExpandedString(): string | null {
-    const str = this.textDecoder.decode(this.expanded.view(), { stream: true })
-    this.expanded.reset()
-    return str.length === 0 ? null : str
-  }
-
-  private resolveAsciiToken(byte: number): string | null {
-    this.expanded.appendUInt8(byte)
-    return this.getExpandedString()
-  }
-
-  private resolveBlobToken(byte: number): string | null {
+  private resolveBlobToken(decompressed: GByteBuffer, byte: number, source: GByteBufferReader) {
     const count = byte & 0x1f
     for (let i = 0; i < count; ++i) {
-      const b = this.getNextByte()
-      if (b === null) {
-        throw new Error("Truncated message!")
-      }
-      this.expanded.appendUInt8(b)
+      const b = source.readUInt8()
+      decompressed.appendUInt8(b)
     }
-    return this.getExpandedString()
   }
 
-  private resolveRepeatToken(byte: number): string | null {
+  private resolveRepeatToken(decompressed: GByteBuffer, byte: number, source: GByteBufferReader) {
     const count = byte & 0x1f
-    const b = this.getNextByte()
-    if (b === null) {
-      throw new Error("Truncated message!")
-    }
+    const b = source.readUInt8()
     for (let i = 0; i < count; ++i) {
-      this.expanded.appendUInt8(b)
+      decompressed.appendUInt8(b)
     }
-    return this.getExpandedString()
   }
 
-  private resolveDecimalToken(byte: number): string | null {
+  private resolveDecimalToken(decompressed: GByteBuffer, byte: number, source: GByteBufferReader) {
     const count = byte & 0x0f
-    if ((count != 1) && (count != 2) && (count != 4)) {
+    let value: number
+    if (count === 1) {
+      value = source.readUInt8()
+    } else if (count === 2) {
+      value = source.readUInt16()
+    } else if (count === 4) {
+      value = source.readUInt32()
+    } else {
       throw new Error(`Invalid byte count: ${count}`)
     }
-    const value = this.getValueOfNextBytes(count)
     const digits = value.toString()
     for (const ch of digits) {
-      this.expanded.appendUInt8(ch.charCodeAt(0))
+      decompressed.appendUInt8(ch.charCodeAt(0))
     }
-    return this.getExpandedString()
   }
 
-  private numberToHex(value: number, uppercase = false): string {
-    if (value === 0) {
-      return "0"
-    }
-    let str = ""
-    const hexDigits = uppercase ? ZappyDecoder.HEX_DIGITS_UPPERCASE : ZappyDecoder.HEX_DIGITS_LOWERCASE
-    while (value !== 0) {
-      const digit = value & 0x0f
-      value >>= 4
-      str = hexDigits[digit] + str
-    }
-    return str
-  }
-
-  private resolveHexadecimalToken(byte: number, isUppercase: boolean): string | null {
+  private resolveHexadecimalToken(decompressed: GByteBuffer, byte: number, source: GByteBufferReader, isUppercase: boolean) {
     const count = byte & 0x07
-    if ((count != 2) && (count != 4)) {
+    let value: number
+    if (count === 2) {
+      value = source.readUInt16()
+    } else if (count === 4) {
+      value = source.readUInt32()
+    } else {
       throw new Error(`Invalid byte count: ${count}`)
     }
-    const value = this.getValueOfNextBytes(count)
-    const digits = this.numberToHex(value, isUppercase)
-    for (const ch of digits) {
-      this.expanded.appendUInt8(ch.charCodeAt(0))
-    }
-    return this.getExpandedString()
+    const digits = numberToHexBytes(value, isUppercase)
+    decompressed.appendAll(digits)
   }
 
-  private resolveContractionToken(byte: number): string | null {
+  private resolveContractionToken(decompressed: GByteBuffer, byte: number, source: GByteBufferReader) {
     let tableId: number
     let lookupIndex: number
     if ((byte & 0x10) === 0) {
@@ -149,7 +89,7 @@ export class ZappyDecoder extends ZappyBase64StringDecoder {
       lookupIndex = byte & 0x0f
     } else {
       tableId = (byte & 0x0f) + 1
-      lookupIndex = this.getValueOfNextBytes(1)
+      lookupIndex = source.readUInt8()
     }
     const lookup = this.contractions.get(tableId)
     if (lookup === undefined) {
@@ -159,52 +99,55 @@ export class ZappyDecoder extends ZappyBase64StringDecoder {
     if (bytes === undefined) {
       throw new Error(`Contraction lookup index ${tableId}]:${lookupIndex} not found!`)
     }
-    this.expanded.append(bytes)
-    return this.getExpandedString()
+    decompressed.appendAll(bytes)
   }
 
-  private resolveNextToken(byte: number): string | null {
+  private resolveNextToken(decompressed: GByteBuffer, byte: number, source: GByteBufferReader) {
     if ((byte & 0x80) === 0) {
       // ASCII character. Take as-is.
-      return this.resolveAsciiToken(byte)
+      this.resolveAsciiToken(decompressed, byte)
+      return
     }
     if ((byte & 0x40) === 0) {
       // Level 1 compressed instruction.
       if ((byte & 0x20) === 0) {
         // Blob. Take as-is as a group.
-        return this.resolveBlobToken(byte)
+        this.resolveBlobToken(decompressed, byte, source)
+        return
       }
       // Repeated character.
-      return this.resolveRepeatToken(byte)
+      this.resolveRepeatToken(decompressed, byte, source)
+      return
     }
     // Level 2 compressed instruction.
     if ((byte & 0x20) === 0) {
       // Unsigned integer.
       if ((byte & 0x10) === 0) {
         // Decimal integer.
-        return this.resolveDecimalToken(byte)
+        this.resolveDecimalToken(decompressed, byte, source)
+        return
       }
       // Hexadecimal integer.
       const isUppercase = (byte & 0x08) === 0
-      return this.resolveHexadecimalToken(byte, isUppercase)
+      this.resolveHexadecimalToken(decompressed, byte, source, isUppercase)
+      return
     }
     // Contraction lookup.
-    return this.resolveContractionToken(byte)
+    this.resolveContractionToken(decompressed, byte, source)
   }
 
-  private *compressedBytesToString(gen: BytesGenerator): StringGenerator {
-    this.gen = gen
-    // eslint-disable-next-line no-constant-condition
+  private stringToDecompressedBytes(bytes: Uint8Array): Uint8Array {
+    const source = GByteBufferReader.fromByteArray(bytes)
+    const decompressed = this.zappyBuffer
+    decompressed.reset()
     while (true) {
-      const byte = this.getNextByte()
-      if (byte === null) {
+      if (source.isAtEnd()) {
         break
       }
-      const str = this.resolveNextToken(byte)
-      if (str !== null) {
-        yield str
-      }
+      const byte = source.readUInt8()
+      this.resolveNextToken(decompressed, byte, source)
     }
+    return decompressed.view()
   }
 
   /**
@@ -215,12 +158,15 @@ export class ZappyDecoder extends ZappyBase64StringDecoder {
    * @throws Error if it's an invalid Zappy string, unless throwOnDecodeErrors is false.
    */
   public decode(str: string): string | null {
-    this.resetDecoder()
     if (this.throwOnDecodeErrors) {
-      return this.stringCollector(this.compressedBytesToString(this.base64BytesToBytes(this.stringToUtf8Bytes(str))))
+      let bytes = this.base64AlphabetToBytes(str)
+      bytes = this.stringToDecompressedBytes(bytes)
+      return this.textDecoder.decode(bytes)
     }
     try {
-      return this.stringCollector(this.compressedBytesToString(this.base64BytesToBytes(this.stringToUtf8Bytes(str))))
+      let bytes = this.base64AlphabetToBytes(str)
+      bytes = this.stringToDecompressedBytes(bytes)
+      return this.textDecoder.decode(bytes)
     } catch (e) {
       return null
     }
