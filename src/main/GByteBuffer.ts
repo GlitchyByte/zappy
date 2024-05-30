@@ -30,7 +30,7 @@ export class GByteBuffer {
    * @param expansionRate Rate of growth when more capacity is needed.
    * @return A GByteBuffer object.
    */
-  public static fromBytes(bytes: Uint8Array, expansionRate = 1.5): GByteBuffer {
+  public static fromByteArray(bytes: Uint8Array, expansionRate = 1.5): GByteBuffer {
     return new GByteBuffer(bytes, bytes.length, expansionRate)
   }
 
@@ -70,52 +70,35 @@ export class GByteBuffer {
    */
   public reset() {
     this.size = 0
+    this.bytes.fill(0)
   }
 
   /**
-   * Get byte at the given index.
+   * Ensures the buffer can hold the given number of bytes.
    *
-   * @param index Byte index.
-   * @return Byte at the given index.
+   * @param capacity Desired minimum buffer capacity.
    */
-  public getAt(index: number): number | undefined {
-    return this.bytes[index]
-  }
-
-  /**
-   * Set the byte at the given index.
-   *
-   * @param index Byte index.
-   * @param value Value to store.
-   */
-  public setAt(index: number, value: number) {
-    this.bytes[index] = value
-  }
-
-  private ensureCapacity(capacity: number) {
+  public ensureCapacity(capacity: number) {
     if (capacity <= this.bytes.length) {
       return
     }
     const newLength = Math.ceil(capacity * this.expansionRate)
     const newBuffer = new Uint8Array(newLength)
-    newBuffer.set(this.bytes, 0)
+    if (this.size > 0) {
+      // We copy bytes if buffer is not empty.
+      newBuffer.set(this.bytes, 0)
+    }
     this.bytes = newBuffer
   }
 
   /**
-   * Appends the contents of the given byte array to the buffer.
+   * Resizes the usable buffer.
    *
-   * @param bytes Byte array.
+   * @param length Desired length of buffer.
    */
-  public append(bytes: ArrayLike<number> | GByteBuffer) {
-    const count = bytes.length
-    this.ensureCapacity(this.size + count)
-    if (bytes instanceof GByteBuffer) {
-      this.bytes.set(bytes.bytes, this.size)
-    } else {
-      this.bytes.set(bytes, this.size)
-    }
-    this.size += count
+  public setLength(length: number) {
+    this.ensureCapacity(length)
+    this.size = length
   }
 
   /**
@@ -185,7 +168,7 @@ export class GByteBuffer {
    * @param value UInt8 to store.
    */
   public setUInt8(offset: number, value: number) {
-    this.bytes[offset] = value & 0xff
+    this.bytes[offset] = value
   }
 
   /**
@@ -196,7 +179,7 @@ export class GByteBuffer {
    */
   public setUInt16(offset: number, value: number) {
     this.bytes[offset] = value & 0xff
-    this.bytes[offset + 1] = (value & 0xff00) >> 8
+    this.bytes[offset + 1] = value >> 8
   }
 
   /**
@@ -209,7 +192,7 @@ export class GByteBuffer {
     this.bytes[offset] = value & 0xff
     this.bytes[offset + 1] = (value & 0xff00) >> 8
     this.bytes[offset + 2] = (value & 0xff0000) >> 16
-    this.bytes[offset + 3] = (value & 0xff000000) >> 24
+    this.bytes[offset + 3] = value >> 24
   }
 
   /**
@@ -280,6 +263,22 @@ export class GByteBuffer {
   }
 
   /**
+   * Appends the contents of the given byte array to the buffer.
+   *
+   * @param bytes Byte array.
+   */
+  public appendAll(bytes: ArrayLike<number> | GByteBuffer) {
+    const count = bytes.length
+    this.ensureCapacity(this.size + count)
+    if (bytes instanceof GByteBuffer) {
+      this.bytes.set(bytes.bytes, this.size)
+    } else {
+      this.bytes.set(bytes, this.size)
+    }
+    this.size += count
+  }
+
+  /**
    * Returns the internal buffer.
    *
    * <p>It will contain used and unused areas.
@@ -312,5 +311,89 @@ export class GByteBuffer {
 
   public toString() {
     return this.view().toString()
+  }
+}
+
+/**
+ * Convenience class to read a byte buffer sequentially.
+ */
+export class GByteBufferReader {
+
+  /**
+   * Creates a byte buffer reader from a byte buffer.
+   *
+   * @param buffer Byte buffer to read from.
+   */
+  public static fromByteBuffer(buffer: GByteBuffer): GByteBufferReader {
+    return new GByteBufferReader(buffer)
+  }
+
+  /**
+   * Creates a byte buffer reader from an array of bytes.
+   *
+   * @param bytes
+   */
+  public static fromByteArray(bytes: Uint8Array): GByteBufferReader {
+    return new GByteBufferReader(GByteBuffer.fromByteArray(bytes))
+  }
+
+  private readonly buffer: GByteBuffer
+  private readonly bufferLength: number
+  private cursor = 0
+
+  private constructor(buffer: GByteBuffer) {
+    this.buffer = buffer
+    this.bufferLength = buffer.length
+  }
+
+  /**
+   * Moves the cursor to the given index.
+   *
+   * @param index New cursor index.
+   */
+  public setCursor(index: number) {
+    this.cursor = index
+  }
+
+  /**
+   * Returns true if the cursor has reached the end of the byte buffer.
+   *
+   * @return True if the cursor has reached the end of the byte buffer.
+   */
+  public isAtEnd(): boolean {
+    return this.cursor >= this.bufferLength
+  }
+
+  /**
+   * Reads a UInt8 and advances the cursor appropriately.
+   *
+   * @return A UInt8 value.
+   */
+  public readUInt8(): number {
+    const value = this.buffer.getUInt8(this.cursor)
+    this.cursor += 1
+    return value
+  }
+
+  /**
+   * Reads a UInt16 and advances the cursor appropriately.
+   *
+   * @return A UInt16 value.
+   */
+  public readUInt16(): number {
+    const value = this.buffer.getUInt16(this.cursor)
+    this.cursor += 2
+    return value
+  }
+
+  /**
+   * Reads a UInt32 and advances the cursor appropriately.
+   *
+   * @return A UInt32 value.
+   */
+  public readUInt32(): number {
+    const value = this.buffer.getUInt32(this.cursor)
+    this.cursor += 4
+    return value
   }
 }

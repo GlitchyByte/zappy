@@ -1,18 +1,18 @@
 // Copyright 2024 GlitchyByte
 // SPDX-License-Identifier: Apache-2.0
 
-import { GByteBuffer } from "../main/GByteBuffer"
+import { GByteBuffer, GByteBufferReader } from "../main/GByteBuffer"
 
 describe("GByteBuffer", () => {
   test("create with existing buffer", () => {
     const bytes = new Uint8Array(8)
-    const buffer = GByteBuffer.fromBytes(bytes)
+    const buffer = GByteBuffer.fromByteArray(bytes)
     expect(buffer.length).toBe(bytes.length)
     expect(buffer.capacity).toBe(bytes.length)
-    buffer.setAt(2, 0x02)
+    buffer.setUInt8(2, 0x02)
     expect(bytes[2]).toBe(0x02)
     bytes[2] = 0x55
-    expect(buffer.getAt(2)).toBe(0x55)
+    expect(buffer.getUInt8(2)).toBe(0x55)
   })
 
   test("prevent illegal expansion rate", () => {
@@ -84,19 +84,19 @@ describe("GByteBuffer", () => {
     buffer.appendUInt8(0x01)
     buffer.appendUInt8(0x02)
     buffer.appendUInt8(0x03)
-    buffer.append([ 0x11, 0x12, 0x13 ])
+    buffer.appendAll([ 0x11, 0x12, 0x13 ])
     const value = buffer.getUInt8(3)
     expect(buffer.length).toBe(6)
     expect(value).toBe(0x11)
   })
 
   test("append GByteBuffer", () => {
-    const data = GByteBuffer.fromBytes(new Uint8Array([ 0x11, 0x12, 0x13 ]))
+    const data = GByteBuffer.fromByteArray(new Uint8Array([ 0x11, 0x12, 0x13 ]))
     const buffer = GByteBuffer.create(8)
     buffer.appendUInt8(0x01)
     buffer.appendUInt8(0x02)
     buffer.appendUInt8(0x03)
-    buffer.append(data)
+    buffer.appendAll(data)
     const value = buffer.getUInt8(3)
     expect(buffer.length).toBe(6)
     expect(value).toBe(0x11)
@@ -107,11 +107,11 @@ describe("GByteBuffer", () => {
     buffer.appendUInt8(0x01)
     buffer.appendUInt8(0x02)
     expect(buffer.length).toBe(2)
-    expect(buffer.getAt(1)).toBe(0x02)
+    expect(buffer.getUInt8(1)).toBe(0x02)
     buffer.insert(1, 0x03)
     expect(buffer.length).toBe(3)
-    expect(buffer.getAt(1)).toBe(0x03)
-    expect(buffer.getAt(2)).toBe(0x02)
+    expect(buffer.getUInt8(1)).toBe(0x03)
+    expect(buffer.getUInt8(2)).toBe(0x02)
   })
 
   test("insert at the end", () => {
@@ -121,8 +121,8 @@ describe("GByteBuffer", () => {
     expect(buffer.length).toBe(2)
     buffer.insert(2, 0x03)
     expect(buffer.length).toBe(3)
-    expect(buffer.getAt(1)).toBe(0x02)
-    expect(buffer.getAt(2)).toBe(0x03)
+    expect(buffer.getUInt8(1)).toBe(0x02)
+    expect(buffer.getUInt8(2)).toBe(0x03)
   })
 
   test("insert array", () => {
@@ -130,12 +130,12 @@ describe("GByteBuffer", () => {
     buffer.appendUInt8(0x01)
     buffer.appendUInt8(0x02)
     expect(buffer.length).toBe(2)
-    expect(buffer.getAt(1)).toBe(0x02)
+    expect(buffer.getUInt8(1)).toBe(0x02)
     buffer.insertAll(1, [ 0x03, 0x04, 0x05 ])
     expect(buffer.length).toBe(5)
-    expect(buffer.getAt(1)).toBe(0x03)
-    expect(buffer.getAt(3)).toBe(0x05)
-    expect(buffer.getAt(4)).toBe(0x02)
+    expect(buffer.getUInt8(1)).toBe(0x03)
+    expect(buffer.getUInt8(3)).toBe(0x05)
+    expect(buffer.getUInt8(4)).toBe(0x02)
   })
 
   test("insert array at the end", () => {
@@ -145,9 +145,9 @@ describe("GByteBuffer", () => {
     expect(buffer.length).toBe(2)
     buffer.insertAll(2, [ 0x03, 0x04, 0x05 ])
     expect(buffer.length).toBe(5)
-    expect(buffer.getAt(1)).toBe(0x02)
-    expect(buffer.getAt(2)).toBe(0x03)
-    expect(buffer.getAt(4)).toBe(0x05)
+    expect(buffer.getUInt8(1)).toBe(0x02)
+    expect(buffer.getUInt8(2)).toBe(0x03)
+    expect(buffer.getUInt8(4)).toBe(0x05)
   })
 
   test("insert out of bounds", () => {
@@ -184,11 +184,11 @@ describe("GByteBuffer", () => {
     buffer.appendUInt8(0x04)
     buffer.appendUInt8(0x05)
     expect(buffer.length).toBe(5)
-    expect(buffer.getAt(1)).toBe(0x02)
+    expect(buffer.getUInt8(1)).toBe(0x02)
     buffer.remove(1, 3)
     expect(buffer.length).toBe(2)
-    expect(buffer.getAt(0)).toBe(0x01)
-    expect(buffer.getAt(1)).toBe(0x05)
+    expect(buffer.getUInt8(0)).toBe(0x01)
+    expect(buffer.getUInt8(1)).toBe(0x05)
   })
 
   test("remove last", () => {
@@ -201,10 +201,10 @@ describe("GByteBuffer", () => {
     expect(buffer.length).toBe(5)
     buffer.remove(4)
     expect(buffer.length).toBe(4)
-    expect(buffer.getAt(3)).toBe(0x04)
+    expect(buffer.getUInt8(3)).toBe(0x04)
     buffer.remove(2, 2)
     expect(buffer.length).toBe(2)
-    expect(buffer.getAt(1)).toBe(0x02)
+    expect(buffer.getUInt8(1)).toBe(0x02)
   })
 
   test("remove out of bounds", () => {
@@ -237,5 +237,26 @@ describe("GByteBuffer", () => {
     expect(buffer.length).toBe(5)
     const view = buffer.view()
     expect(view.length).toBe(5)
+  })
+})
+
+describe("GByteBufferReader", () => {
+  test("read values", () => {
+    const buffer = GByteBuffer.create()
+    buffer.appendUInt8(0x01)
+    buffer.appendUInt8(0x02)
+    buffer.appendUInt8(0x03)
+    buffer.appendUInt8(0x04)
+    buffer.appendUInt8(0x05)
+    buffer.appendUInt8(0x06)
+    buffer.appendUInt8(0x07)
+    const reader = GByteBufferReader.fromByteBuffer(buffer)
+    const value8 = reader.readUInt8()
+    expect(value8).toBe(0x01)
+    const value16 = reader.readUInt16()
+    expect(value16).toBe(0x0302)
+    const value32 = reader.readUInt32()
+    expect(value32).toBe(0x07060504)
+    expect(reader.isAtEnd()).toBe(true)
   })
 })
