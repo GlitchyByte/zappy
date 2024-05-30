@@ -1,10 +1,13 @@
 # Zappy
 
-![Version](https://img.shields.io/badge/Version-1.0.0-blue)
-![Spec](https://img.shields.io/badge/Spec-1.0.0-cyan)
+![Version](https://img.shields.io/badge/Version-1.2.0-blue)
+![Spec](https://img.shields.io/badge/Spec-1.1.0-cyan)
 
 Lightweight library for compressing and encoding web-related text
-(json, urls, etc.) into a URL-safe format for efficient transport.
+(json, URLs, UUIDs, etc.) into a URL-safe format for
+efficient transport.
+
+[Read the spec here!](https://github.com/GlitchyByte/zappy/blob/main/SPEC.md)
 
 #### Goals
 
@@ -29,8 +32,6 @@ and decoding, it's very possible the output will not be the same or
 even invalid. Keep this in mind when decoding and handle these cases
 accordingly. That is, always sanitize your (decoded) output and handle
 decoding error conditions.
-
-[Read the spec here.](https://github.com/GlitchyByte/zappy/blob/main/SPEC.md)
 
 # API
 
@@ -65,10 +66,12 @@ still have a gain.
 Tables 1-17 allow 256 entries each. Entries can have a minimum of 3
 characters (or 3 bytes when converted to UTF-8).
 
-Developer defined contraction tables are overlaid onto
+Developer defined `contraction tables` are overlaid onto
 [default tables](https://github.com/GlitchyByte/zappy/blob/main/src/main/zappy-default-contractions.ts).
 There is a default table 0 specialized in json, and a default
 table 16 with common strings.
+
+Define your `contraction tables` like so:
 
 ```ts
 const contractions = new Map<number, string[]>([
@@ -90,17 +93,19 @@ const json = '{' +
   '}'
 const encoded = zappy.encode(json)
 console.log(`[${encoded.length}] ${encoded}`)
-//  [92] 6mNvZGVVcmzm4GdpdGh1Yv8EL_ACL3R3YWRkbGXnbXNn5ldoZW4gSSBkZWFs
-//       IHdpdGgg8AAgSSB0aGluayBvZiDwAS7r
+//  [90] 6mNvZGVVcmzm4GdpdGh1Yv8EL_ACL3phcHB5521zZ-ZXaGVuIEkgZGVhbCB3
+//       aXRoIPAAIEkgdGhpbmsgb2Yg8AEu6w
 
 // While vanilla base64 is:
-// [167] eyJjb2RlVXJsIjoiaHR0cHM6Ly9naXRodWIuY29tL2dsaXRjaHlieXRlL3R3
-//       YWRkbGUiLCJtc2ciOiJXaGVuIEkgZGVhbCB3aXRoIGludGVybmF0aW9uYWxp
-//       emF0aW9uIEkgdGhpbmsgb2YgZGVmZW5lc3RyYXRpb24uIn0
+const base64Encoded = zappy.base64StringEncode(json)
+console.log(`[${base64Encoded.length}] ${base64Encoded}`)
+// [164] eyJjb2RlVXJsIjoiaHR0cHM6Ly9naXRodWIuY29tL2dsaXRjaHlieXRlL3ph
+//       cHB5IiwibXNnIjoiV2hlbiBJIGRlYWwgd2l0aCBpbnRlcm5hdGlvbmFsaXph
+//       dGlvbiBJIHRoaW5rIG9mIGRlZmVuZXN0cmF0aW9uLiJ9
 
-const decoded = zappy.decode(encoded)
+const decoded = zappy.decode(encoded)!
 console.log(`[${decoded.length}] ${decoded}`)
-// [125] {"codeUrl":"https://github.com/glitchybyte/zappy","msg":"Whe
+// [123] {"codeUrl":"https://github.com/glitchybyte/zappy","msg":"Whe
 //       n I deal with internationalization I think of defenestration
 //       ."}
 ```
