@@ -51,14 +51,18 @@ export class ZappyDecoder extends ZappyBase64StringDecoder {
   private resolveDecimalToken(decompressed: GByteBuffer, byte: number, source: GByteBufferReader) {
     const count = byte & 0x0f
     let value: number
-    if (count === 1) {
-      value = source.readUInt8()
-    } else if (count === 2) {
-      value = source.readUInt16()
-    } else if (count === 4) {
-      value = source.readUInt32()
-    } else {
-      throw new Error(`Invalid byte count: ${count}`)
+    switch (count) {
+      case 1:
+        value = source.readUInt8()
+        break
+      case 2:
+        value = source.readUInt16()
+        break
+      case 4:
+        value = source.readUInt32()
+        break
+      default:
+        throw new Error(`Invalid byte count: ${count}`)
     }
     const digits = value.toString()
     for (const ch of digits) {
@@ -69,12 +73,15 @@ export class ZappyDecoder extends ZappyBase64StringDecoder {
   private resolveHexadecimalToken(decompressed: GByteBuffer, byte: number, source: GByteBufferReader, isUppercase: boolean) {
     const count = byte & 0x07
     let value: number
-    if (count === 2) {
-      value = source.readUInt16()
-    } else if (count === 4) {
-      value = source.readUInt32()
-    } else {
-      throw new Error(`Invalid byte count: ${count}`)
+    switch (count) {
+      case 2:
+        value = source.readUInt16()
+        break
+      case 4:
+        value = source.readUInt32()
+        break
+      default:
+        throw new Error(`Invalid byte count: ${count}`)
     }
     const digits = numberToHexBytes(value, isUppercase)
     decompressed.appendAll(digits)
@@ -97,7 +104,7 @@ export class ZappyDecoder extends ZappyBase64StringDecoder {
     }
     const bytes = lookup.get(lookupIndex)
     if (bytes === undefined) {
-      throw new Error(`Contraction lookup index ${tableId}]:${lookupIndex} not found!`)
+      throw new Error(`Contraction lookup index [${tableId}]:${lookupIndex} not found!`)
     }
     decompressed.appendAll(bytes)
   }
@@ -140,10 +147,7 @@ export class ZappyDecoder extends ZappyBase64StringDecoder {
     const source = GByteBufferReader.fromByteArray(bytes)
     const decompressed = this.zappyBuffer
     decompressed.reset()
-    while (true) {
-      if (source.isAtEnd()) {
-        break
-      }
+    while (!source.isAtEnd()) {
       const byte = source.readUInt8()
       this.resolveNextToken(decompressed, byte, source)
     }

@@ -27,13 +27,13 @@ export class ZappyBase64StringDecoder {
 
   private base64ToByte(ch: string): number {
     const chByte = ch.charCodeAt(0)
-    if ((chByte >= 65) && (chByte <=90)) {
+    if ((chByte >= 65) && (chByte <= 90)) {
       return chByte - 65
     }
-    if ((chByte >= 97) && (chByte <=122)) {
+    if ((chByte >= 97) && (chByte <= 122)) {
       return chByte - 71
     }
-    if ((chByte >= 48) && (chByte <=57)) {
+    if ((chByte >= 48) && (chByte <= 57)) {
       return chByte + 4
     }
     if (chByte === 45) {

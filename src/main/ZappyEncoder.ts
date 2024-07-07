@@ -175,12 +175,10 @@ export class ZappyEncoder extends ZappyBase64StringEncoder {
     const byteCount = value > 0xffff ? 4 : 2
     const token = (isUppercase ? 0xd0 : 0xd8) | byteCount
     compressed.appendUInt8(token)
-    switch (byteCount) {
-      case 4:
-        compressed.appendUInt32(value)
-        break
-      default:
-        compressed.appendUInt16(value)
+    if (byteCount === 4) {
+      compressed.appendUInt32(value)
+    } else {
+      compressed.appendUInt16(value)
     }
     return digit
   }

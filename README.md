@@ -1,6 +1,6 @@
 # Zappy
 
-![Version](https://img.shields.io/badge/Version-1.2.0-blue)
+![Version](https://img.shields.io/badge/Version-1.2.1-blue)
 ![Spec](https://img.shields.io/badge/Spec-1.1.0-cyan)
 
 Lightweight library for compressing and encoding web-related text

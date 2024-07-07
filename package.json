@@ -1,6 +1,6 @@
 {
   "name": "@glitchybyte/zappy",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "author": "GlitchyByte",
   "license": "Apache-2.0",
   "description": "Lightweight library for compressing and encoding web-related text (json, URLs, UUIDs, etc.) into a URL-safe format for efficient transport.",
@@ -39,7 +39,7 @@
   "devDependencies": {
     "@types/jest": "^29.5.12",
     "jest": "^29.7.0",
-    "ts-jest": "^29.1.4",
-    "typescript": "^5.4.5"
+    "ts-jest": "^29.1.5",
+    "typescript": "^5.5.3"
   }
 }

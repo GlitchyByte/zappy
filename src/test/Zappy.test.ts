@@ -320,12 +320,12 @@ describe("Zappy", () => {
         ])
         const defaultZappy = new Zappy(null)
         const zappy = new Zappy(contractionSource)
-        let original = '{"url":"https://example.nope"}' // Only default 0-contractions.
-        let defaultEncoded = defaultZappy.encode(original)
-        let encoded = zappy.encode(original)
+        const original = '{"url":"https://example.nope"}' // Only default 0-contractions.
+        const defaultEncoded = defaultZappy.encode(original)
+        const encoded = zappy.encode(original)
         expect(encoded).not.toBe(original)
         expect(encoded).toBe(defaultEncoded)
-        let decoded = zappy.decode(encoded)
+        const decoded = zappy.decode(encoded)
         expect(decoded).toBe(original)
       })
 
