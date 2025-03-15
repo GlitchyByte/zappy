@@ -1,7 +1,7 @@
 # Zappy
 
-![Version](https://img.shields.io/badge/Version-1.2.1-blue)
-![Spec](https://img.shields.io/badge/Spec-1.1.0-cyan)
+![version](https://img.shields.io/badge/version-1.2.2-dodgerblue)
+![spec](https://img.shields.io/badge/spec-1.1.0-palegreen)
 
 Lightweight library for compressing and encoding web-related text
 (json, URLs, UUIDs, etc.) into a URL-safe format for
@@ -33,37 +33,39 @@ even invalid. Keep this in mind when decoding and handle these cases
 accordingly. That is, always sanitize your (decoded) output and handle
 decoding error conditions.
 
-# API
+## API
 
 ```ts
 // Constructor.
 Zappy(source: Map<number, string[]> | null, throwOnDecodeErrors = false)
 
-// Base64 string encode/decode.
+// Methods to encode/decode a base64 string.
 base64StringEncode(str: string): string
 base64StringDecode(str: string): string | null
 
-// Zappy encode/decode.
+// Methods to encode/decode a Zappy string.
 encode(str: string): string
 decode(str: string): string | null
 ```
 
-# How to use
+## How to use
 
-### Add to your project
+### Add package to your project
 
-    npm install @glitchybyte/zappy
+```bash
+npm install @glitchybyte/zappy
+```
 
 ### Define contraction tables
 
-There are 17 `contraction tables` available for use.
+There are 17 `contraction tables` available for use [0..16].
 
-Table 0 is called the fast lookup table, it gets the best compression
+Table 0 is called the *fast lookup table*, it gets the best compression
 gains, but only 16 entries are permitted. Entries in table 0 can have
 a minimum of 2 characters (or 2 bytes when converted to UTF-8) and
 still have a gain.
 
-Tables 1-17 allow 256 entries each. Entries can have a minimum of 3
+Tables 1-16 allow 256 entries each. Entries can have a minimum of 3
 characters (or 3 bytes when converted to UTF-8).
 
 Developer defined `contraction tables` are overlaid onto
@@ -83,9 +85,11 @@ const contractions = new Map<number, string[]>([
 ])
 ```
 
-### Encode and decode
+### Encode and decode in your code
 
 ```ts
+import { Zappy } from "@glitchybyte/zappy"
+
 const zappy = new Zappy(contractions)
 const json = '{' +
   '"codeUrl":"https://github.com/glitchybyte/zappy",' +
