@@ -1,6 +1,6 @@
 # Spec for nerds
 
-![Spec](https://img.shields.io/badge/Spec-1.1.0-darkcyan)
+![spec](https://img.shields.io/badge/spec-1.1.0-palegreen)
 
 ## Each byte:
 
