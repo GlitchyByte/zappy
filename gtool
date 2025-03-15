@@ -1,0 +1,192 @@
+#!/usr/bin/env bash
+# Copyright 2023-2025 GlitchyByte
+# SPDX-License-Identifier: MIT
+
+# gtool v1.0.0
+# Manage project.
+
+# [Setup]
+set -u # Exit with an error if a variable is used without being set.
+set -e # Exit if any command returns an error.
+# Capture caller directory and script directory.
+readonly calling_dir="${PWD}"
+readonly script_dir="$(cd "$(dirname "$0")" && pwd)"
+# Go to script directory and load utilities.
+cd "${script_dir}"
+
+# [Color]
+# Find out terminal color support.
+readonly _tput_colors="$(tput colors 2>/dev/null)"
+if [[ -n "${_tput_colors}" && "${_tput_colors}" -ge 256 ]]; then
+  readonly has_colors=true
+  readonly c_reset="$(tput sgr0)"
+else
+  readonly has_colors=false
+  readonly c_reset=""
+fi
+# Make foreground color from rgb [0..5] per channel.
+fg_color() {
+  if [[ "${has_colors}" == false ]]; then
+    echo ""
+  else
+    echo "$(tput setaf $((16 + (36 * $1) + (6 * $2) + $3)))"
+  fi
+}
+# Make background color from rgb [0..5] per channel.
+bg_color() {
+  if [[ "${has_colors}" == false ]]; then
+    echo ""
+  else
+    echo "$(tput setab $((16 + (36 * $1) + (6 * $2) + $3)))"
+  fi
+}
+
+# Define colors.
+readonly c_highlight="$(fg_color 5 5 5)"
+readonly c_path="$(fg_color 1 1 1)"
+readonly c_good="$(fg_color 0 5 1)"
+readonly c_bad="$(fg_color 4 0 0)"
+
+# [Functions]
+print_usage() {
+  echo "Usage: gtool <setup|build|copy>"
+  echo "    setup - Sets up project."
+  echo "    build - Builds project."
+  echo "    test - Tests project."
+  echo "    copy <dest> - Makes a clean copy of the project into dest."
+}
+
+setup_project() {
+  echo "${c_highlight}Setting up project...${c_reset}"
+  # Remove node_modules.
+  if [ -d "node_modules" ]; then
+    rm -dr node_modules
+  fi
+  # Remove package-lock.json.
+  if [ -f "package-lock.json" ]; then
+    rm package-lock.json
+  fi
+  # Install.
+  npm install
+  return 0
+}
+
+build_project() {
+  echo "${c_highlight}Building project...${c_reset}"
+  # Remove dist.
+  local -r out_dir=$(sed -E -e 's|/\*.*\*/||' -e 's|//.*$||' tsconfig.json | jq -r '.compilerOptions.outDir')
+  if [[ "${out_dir}" == "null" ]]; then
+    echo "No outDir in tsconfig.json"
+    return 1
+  fi
+  if [ -d "${out_dir}" ]; then
+    rm -dr "${out_dir}"
+  fi
+  # Build.
+  npm run build
+  return 0
+}
+
+test_project() {
+  echo "${c_highlight}Testing project...${c_reset}"
+  # Remove coverage.
+  if [ -d "coverage" ]; then
+    rm -dr coverage
+  fi
+  # Test.
+  npm test
+  return 0
+}
+
+copy_project() {
+  if [ $# -eq 0 ]; then
+    print_usage
+    return 1
+  fi
+  # Get destination package directory.
+  local -r dest="$1"
+  # Verify dest exists.
+  if [ ! -d "${dest}" ]; then
+    echo "${c_bad}Destination does not exist: ${c_path}${dest}${c_reset}"
+    return 1
+  fi
+  local -r package_name=$(jq -r '.name' package.json)
+  local -r dest_package_dir="${dest}/${package_name}"
+  echo "${c_highlight}Copying project to: ${c_path}${dest_package_dir}${c_reset}"
+  # Create directory.
+  if [ -d "${dest_package_dir}" ]; then
+    rm -dr "${dest_package_dir}"
+  fi
+  mkdir -p "${dest_package_dir}"
+  # Copy files to destination package directory.
+  local -r paths=$(jq -r '.files[]' package.json)
+  while read -r path; do
+    local -r clean_path="${path#./}"
+    if [ -d "${clean_path}" ]; then
+      local -r dest_dir="${dest_package_dir}/${clean_path}"
+      mkdir -p "${dest_dir}"
+      cp -r "${clean_path}/" "${dest_dir}/"
+    else
+      local src_dir="$(dirname "${clean_path}")"
+      if [[ "${src_dir}" == '.' ]]; then
+        src_dir=""
+      fi
+      local -r src_file="$(basename "${clean_path}")"
+      local dest_dir="${dest_package_dir}/${src_dir}"
+      dest_dir="${dest_dir%/}"
+      mkdir -p "${dest_dir}"
+      cp "${clean_path}" "${dest_dir}/${src_file}"
+    fi
+  done <<< "${paths}"
+  cp package.json "${dest_package_dir}/"
+  return 0
+}
+
+# [Router]
+# Capture command.
+if [ $# -eq 0 ]; then
+  readonly command="exit"
+else
+  readonly command="$1"
+  shift
+fi
+
+# Remove macOS cruft.
+find . -name ".DS_Store" -type f -delete
+
+# Route command.
+case "${command}" in
+  "setup")
+    setup_project
+    code=$?
+    ;;
+  "build")
+    build_project
+    code=$?
+    ;;
+  "test")
+    test_project
+    code=$?
+    ;;
+  "copy")
+    copy_project "$@"
+    code=$?
+    ;;
+  "exit")
+    print_usage
+    code=0
+    ;;
+  *)
+    print_usage
+    code=1
+    ;;
+esac
+if [[ "${code}" -eq 0 ]]; then
+  if [[ "${command}" != "exit" ]]; then
+    echo "${c_good}Done!${c_reset}"
+  fi
+fi
+
+# [Teardown]
+cd "${calling_dir}"
+exit $code
