@@ -1,13 +1,13 @@
 # Zappy
 
-![version](https://img.shields.io/badge/version-1.2.2-dodgerblue)
-![spec](https://img.shields.io/badge/spec-1.1.0-palegreen)
+[![version](https://img.shields.io/badge/version-1.2.2-dodgerblue)](https://github.com/GlitchyByte/zappy/releases/tag/v1.2.2)
+[![spec](https://img.shields.io/badge/spec-1.1.0-palegreen)](https://github.com/GlitchyByte/zappy/blob/v1.2.2/SPEC.md)
 
 Lightweight library for compressing and encoding web-related text
 (json, URLs, UUIDs, etc.) into a URL-safe format for
 efficient transport.
 
-[Read the spec here!](https://github.com/GlitchyByte/zappy/blob/main/SPEC.md)
+[Read the spec here!](https://github.com/GlitchyByte/zappy/blob/v1.2.2/SPEC.md)
 
 #### Goals
 
