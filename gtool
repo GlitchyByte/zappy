@@ -2,7 +2,7 @@
 # Copyright 2023-2025 GlitchyByte
 # SPDX-License-Identifier: MIT
 
-# gtool v1.0.0
+# gtool v1.1.0
 # Manage project.
 
 # [Setup]
@@ -74,10 +74,10 @@ setup_project() {
 build_project() {
   echo "${c_highlight}Building project...${c_reset}"
   # Remove dist.
-  local -r out_dir=$(sed -E -e 's|/\*.*\*/||' -e 's|//.*$||' tsconfig.json | jq -r '.compilerOptions.outDir')
+  local out_dir=$(sed -E -e 's|/\*.*\*/||' -e 's|//.*$||' tsconfig.json | jq -r '.compilerOptions.outDir')
   if [[ "${out_dir}" == "null" ]]; then
-    echo "No outDir in tsconfig.json"
-    return 1
+    echo "No outDir in tsconfig.json. Defaulting to '${c_highlight}dist${c_reset}'"
+    out_dir="dist"
   fi
   if [ -d "${out_dir}" ]; then
     rm -dr "${out_dir}"
@@ -99,7 +99,7 @@ test_project() {
 }
 
 copy_project() {
-  if [ $# -eq 0 ]; then
+  if [[ $# -eq 0 ]]; then
     print_usage
     return 1
   fi
@@ -121,9 +121,9 @@ copy_project() {
   # Copy files to destination package directory.
   local -r paths=$(jq -r '.files[]' package.json)
   while read -r path; do
-    local -r clean_path="${path#./}"
+    local clean_path="${path#./}"
     if [ -d "${clean_path}" ]; then
-      local -r dest_dir="${dest_package_dir}/${clean_path}"
+      local dest_dir="${dest_package_dir}/${clean_path}"
       mkdir -p "${dest_dir}"
       cp -r "${clean_path}/" "${dest_dir}/"
     else
@@ -131,7 +131,7 @@ copy_project() {
       if [[ "${src_dir}" == '.' ]]; then
         src_dir=""
       fi
-      local -r src_file="$(basename "${clean_path}")"
+      local src_file="$(basename "${clean_path}")"
       local dest_dir="${dest_package_dir}/${src_dir}"
       dest_dir="${dest_dir%/}"
       mkdir -p "${dest_dir}"
@@ -144,7 +144,7 @@ copy_project() {
 
 # [Router]
 # Capture command.
-if [ $# -eq 0 ]; then
+if [[ $# -eq 0 ]]; then
   readonly command="exit"
 else
   readonly command="$1"
