@@ -1,9 +1,9 @@
 {
   "name": "@glitchybyte/zappy",
-  "version": "1.2.2",
-  "author": "GlitchyByte",
-  "license": "Apache-2.0",
+  "version": "2.0.0",
   "description": "Lightweight library for compressing and encoding web-related text (json, URLs, UUIDs, etc.) into a URL-safe format for efficient transport.",
+  "license": "Apache-2.0",
+  "author": "GlitchyByte",
   "keywords": [
     "json",
     "text",
@@ -15,32 +15,36 @@
     "type": "git",
     "url": "git+https://github.com/GlitchyByte/zappy.git"
   },
-  "files": ["dist"],
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
   "main": "./dist/index.js",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "scripts": {
-    "build": "tsc",
-    "test": "jest --coverage"
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
   },
-  "jest": {
-    "preset": "ts-jest",
-    "testEnvironment": "node",
-    "testMatch": [
-      "<rootDir>/src/test/**/*.test.ts"
-    ],
-    "collectCoverage": true,
-    "coverageReporters": [
-      "lcov",
-      "text"
-    ],
-    "watch": false,
-    "watchAll": false,
-    "watchman": false
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "brotli-wasm": "^3.0.1"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.12",
-    "jest": "^29.7.0",
-    "ts-jest": "^29.1.5",
-    "typescript": "^5.8.2"
+    "@types/node": "^24.0.3",
+    "@vitest/coverage-v8": "^3.2.4",
+    "@types/fs-extra": "^11.0.4",
+    "fs-extra": "^11.3.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^3.2.4"
   }
 }
