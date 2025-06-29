@@ -31,7 +31,7 @@ function base64CharacterTo6Bits(ch: string): number {
  * @param str Base64 string.
  * @throws Error If str is an invalid base64 string.
  */
-export function decodeBase64ToBytes(str: string): Uint8Array {
+export function decodeBase64ToBytes(str: string): Uint8Array<ArrayBuffer> {
   // Base64 decode.
   // We have 4 6-bit bytes. Make 3 bytes out of them.
   const strLength = str.length

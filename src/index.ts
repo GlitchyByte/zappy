@@ -3,4 +3,7 @@
 
 export * from "./lib/base64Encoder"
 export * from "./lib/base64Decoder"
-export * from "./lib/zappy2"
+export * from "./lib/zappy-default-contractions"
+export * from "./lib/zappy"
+export * from "./lib/zappyEncoder"
+export * from "./lib/zappyDecoder"

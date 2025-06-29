@@ -1,9 +1,12 @@
-// Copyright 2024 GlitchyByte
+// Copyright 2024-2025 GlitchyByte
 // SPDX-License-Identifier: Apache-2.0
 
-import fs from "node:fs"
-import { GMath } from "../main/GMath"
-import { numberToHexString } from "../main/gutils"
+import fs from "fs-extra"
+import { GMath, numberToHexString } from "@glitchybyte/dash"
+
+export function loadStringFromFile(path: string): string {
+  return fs.readFileSync(path, "utf8")
+}
 
 export const saveLinesToFile = (path: string, lines: string[]) => {
   const stream = fs.createWriteStream(path, "utf8")
@@ -101,7 +104,7 @@ export const makeFakeJson = (knownIdentifiers: string[]): string => {
   const makeHex = (): string => {
     const value = GMath.randomUInt(0x01000000)
     const isUppercase = GMath.randomBoolean()
-    return "0x" + numberToHexString(value, isUppercase).padStart(6, "0")
+    return "0x" + numberToHexString(value, 6, isUppercase)
   }
 
   const itemCount = GMath.randomUIntRange(4, 12)

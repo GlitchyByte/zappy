@@ -1,15 +1,15 @@
-// Copyright 2024 GlitchyByte
+// Copyright 2024-2025 GlitchyByte
 // SPDX-License-Identifier: Apache-2.0
 
 /**
  * Default contractions for Zappy.
  *
- * <p>It is highly recommended developers using Zappy add their own contraction tables,
- * or even replace them completely.
+ * It is highly recommended developers using Zappy add their own contraction tables,
+ * or even replace them completely if needed.
  *
- * <p>These defaults are optimized for json messages and URLs.
+ * These defaults are optimized for json messages and URLs.
  */
-export const defaultContractions = new Map<number, string[]>([
+export const zappyDefaultContractions = new Map<number, string[]>([
   [0, [ // Up to 16 entries.
     "null",
     "true",
