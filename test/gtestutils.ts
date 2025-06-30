@@ -2,13 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import fs from "fs-extra"
-import { GMath, numberToHexString } from "@glitchybyte/dash"
+import { GMath, numberToHexString, pickRandomArrayItem } from "@glitchybyte/dash"
 
-export function loadStringFromFile(path: string): string {
-  return fs.readFileSync(path, "utf8")
-}
-
-export const saveLinesToFile = (path: string, lines: string[]) => {
+export function saveLinesToFile(path: string, lines: string[]): void {
   const stream = fs.createWriteStream(path, "utf8")
   for (let i = 0; i < (lines.length - 1); ++i) {
     stream.write(lines[i] + "\n")
@@ -16,7 +12,7 @@ export const saveLinesToFile = (path: string, lines: string[]) => {
   stream.end(lines[lines.length - 1])
 }
 
-export const loadLinesFromFile = (path: string): string[] => {
+export function loadLinesFromFile(path: string): string[] {
   const lines = []
   const bufferSize = 64 * 1024
   const textDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true })
@@ -53,14 +49,13 @@ export const loadLinesFromFile = (path: string): string[] => {
   return lines
 }
 
-export const makeFakeJson = (knownIdentifiers: string[]): string => {
+export function makeFakeJson(knownIdentifiers: string[]): string {
   const makeKnownIdentifier = (): string => {
-    const index = GMath.randomUInt(knownIdentifiers.length)
-    return knownIdentifiers[index]
+    return pickRandomArrayItem(knownIdentifiers)!
   }
   const makeUnknownIdentifier = (): string => {
     const characters = "abcdefghijklmnopqrstuvwxyz"
-    const length = GMath.randomUIntRange(4, 8)
+    const length = GMath.randomUIntRange(4, 10)
     let str = ""
     for (let i = 0; i < length; ++i) {
       const index = GMath.randomUInt(characters.length)
@@ -93,7 +88,7 @@ export const makeFakeJson = (knownIdentifiers: string[]): string => {
   }
   const makeString = (): string => {
     const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 "
-    const length = GMath.randomUIntRange(4, 24)
+    const length = GMath.randomUIntRange(6, 32)
     let str = ""
     for (let i = 0; i < length; ++i) {
       const index = GMath.randomUInt(characters.length)
@@ -104,31 +99,84 @@ export const makeFakeJson = (knownIdentifiers: string[]): string => {
   const makeHex = (): string => {
     const value = GMath.randomUInt(0x01000000)
     const isUppercase = GMath.randomBoolean()
-    return "0x" + numberToHexString(value, 6, isUppercase)
+    return "0x" + numberToHexString(value, 1, isUppercase)
+  }
+  const makeUUID = (): string => {
+    return crypto.randomUUID()
+  }
+  const makeArray = (): string => {
+    const itemCount = GMath.randomUIntRange(3, 20)
+    const itemType = GMath.randomUInt(3)
+    let str = "["
+    for (let i = 0; i < itemCount; ++i) {
+      switch (itemType) {
+        case 0:
+          str += makeNumber()
+          break
+        case 1:
+          str += `"${makeHex()}"`
+          break
+        case 2:
+          str += `"${makeString()}"`
+          break
+      }
+      if (i < (itemCount - 1)) {
+        str += ","
+      }
+    }
+    str += "]"
+    return str
+  }
+  const makeObject = (): string => {
+    const itemCount = GMath.randomUIntRange(4, 12)
+    let str = "{"
+    for (let i = 0; i < itemCount; ++i) {
+      str += GMath.randomBoolean(0.75) ? `"${makeKnownIdentifier()}":` : `"${makeUnknownIdentifier()}":`
+      const itemType = randomWeightIndex([2, 3, 3, 3, 5, 1, 0.5])
+      switch (itemType) {
+        case 0:
+          str += makeBoolean()
+          break
+        case 1:
+          str += makeNumber()
+          break
+        case 2:
+          str += `"${makeHex()}"`
+          break
+        case 3:
+          str += `"${makeUUID()}"`
+          break
+        case 4:
+          str += `"${makeString()}"`
+          break
+        case 5:
+          str += makeArray()
+          break
+        case 6:
+          str += makeObject()
+          break
+      }
+      if (i < (itemCount - 1)) {
+        str += ","
+      }
+    }
+    str += "}"
+    return str
   }
 
-  const itemCount = GMath.randomUIntRange(4, 12)
-  let str = "{"
-  for (let i = 0; i < itemCount; ++i) {
-    str += GMath.randomBoolean(0.75) ? `"${makeKnownIdentifier()}":` : `"${makeUnknownIdentifier()}":`
-    const itemType = GMath.randomUInt(4)
-    switch (itemType) {
-      case 0:
-        str += makeBoolean()
-        break
-      case 1:
-        str += makeNumber()
-        break
-      case 2:
-        str += `"${makeString()}"`
-        break
-      case 3:
-        str += `"${makeHex()}"`
-    }
-    if (i < (itemCount - 1)) {
-      str += ","
+  return makeObject()
+}
+
+function randomWeightIndex(weights: number[]): number {
+  const total = weights.reduce((previousValue, currentValue) => previousValue + currentValue)
+  const r = GMath.random(total)
+  let acc = 0
+  for (let i = 0; i < weights.length; ++i) {
+    acc += weights[i]
+    if (r < acc) {
+      return i
     }
   }
-  str += "}"
-  return str
+  // Floating point errors go to the last item.
+  return weights[weights.length - 1]
 }
