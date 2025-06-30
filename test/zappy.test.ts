@@ -292,5 +292,22 @@ describe("Zappy", () => {
         }).toThrow()
       })
     })
+
+    describe("Examples", () => {
+      const knownIdentifiers = [
+        "user", "location", "rank", "score", "target", "color", "size", "origin", "name", "track", "command", "time"
+      ]
+      const testContractions = new Map<number, string[]>([
+        [1, knownIdentifiers]
+      ])
+      const contractionTables = createZappyContractionTables(zappyDefaultContractions, testContractions)
+      it("10 digit in UUID but only 9 are compressible in one token", () => {
+        const json = '{"track":"0x6A830D","user":1448,"score":"341c9a18-20bf-4ccf-95ef-1d001ebe1de5","origin":"15d759cd-7891-4a62-863c-866465076610"}'
+        const encoded = encodeStringToZappy(json, contractionTables)
+        expect(encoded).not.toBe(json)
+        const decoded = decodeZappyToString(encoded, contractionTables)
+        expect(decoded).toBe(json)
+      })
+    })
   })
 })

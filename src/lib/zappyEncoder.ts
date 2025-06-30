@@ -89,16 +89,16 @@ function addDecimalToken(compressed: GByteBufferWriter, source: Uint8Array, inde
   // FIXME JS BUG: Can't have an unsigned 32bit int, if bit 31 is set JS interprets it as a negative number.
   //  So we'll only encode numbers up to 31 bits long. Though the problem only shows when decoding, we prevent
   //  encoding so we don't manifest the bug later.
-  let digit = 0
+  let digits = 0
   let value = 0
-  while (digit < count) {
-    const byte = source[index + digit]
+  while (digits < count) {
+    const byte = source[index + digits]
     const newValue = (value * 10) + (byte - 0x30)
     if (newValue > MAX_DECIMAL) {
       break
     }
     value = newValue
-    ++digit
+    ++digits
   }
   // Minimum encoding size is 2 bytes (token + UInt8). So we do not encode numbers under 100 which are
   // 2 bytes to start with in ASCII.
@@ -123,17 +123,17 @@ function addDecimalToken(compressed: GByteBufferWriter, source: Uint8Array, inde
     default:
       compressed.writeUInt8(value)
   }
-  return count
+  return digits
 }
 
 function addHexadecimalToken(compressed: GByteBufferWriter, source: Uint8Array, index: number, count: number, isUppercase: boolean) {
   // FIXME JS BUG: Can't have an unsigned 32bit int, if bit 31 is set JS interprets it as a negative number.
   //  So we'll only encode numbers up to 31 bits long. Though the problem only shows when decoding, we prevent
   //  encoding so we don't manifest the bug later.
-  let digit = 0
+  let digits = 0
   let value = 0
-  while (digit < count) {
-    const byte = source[index + digit]
+  while (digits < count) {
+    const byte = source[index + digits]
     let digitValue = 0
     if (isDigit(byte)) {
       digitValue = byte - 0x30
@@ -142,11 +142,12 @@ function addHexadecimalToken(compressed: GByteBufferWriter, source: Uint8Array, 
     } else {
       digitValue = byte - 0x57 // 0x0a + (byte - 0x61)
     }
-    if ((value & 0x08000000) !== 0) {
+    const newValue = (value * 0x10) | digitValue
+    if ((newValue & MAX_DECIMAL) !== newValue) {
       break
     }
-    value = (value * 0x10) | digitValue
-    ++digit
+    value = newValue
+    ++digits
   }
   // Minimum encoding size is 3 bytes (token + UInt16). So we do not encode hex numbers under 0x1000 which are
   // 3 bytes to start with in ASCII.
@@ -161,7 +162,7 @@ function addHexadecimalToken(compressed: GByteBufferWriter, source: Uint8Array, 
   } else {
     compressed.writeUInt16(value)
   }
-  return digit
+  return digits
 }
 
 function addUnsignedIntegerToken(compressed: GByteBufferWriter, source: Uint8Array, index: number): number {

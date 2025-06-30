@@ -126,7 +126,7 @@ function resolveNextToken(decompressed: GByteBufferWriter, byte: number, source:
   resolveContractionToken(decompressed, byte, source, contractions)
 }
 
-function compressToZappyBytes(bytes: Uint8Array<ArrayBuffer>, contractions: ZappyContractionTables): Uint8Array<ArrayBuffer> {
+function decompressFromZappyBytes(bytes: Uint8Array<ArrayBuffer>, contractions: ZappyContractionTables): Uint8Array {
   const source = new GByteBufferReader(bytes.buffer)
   const decompressed = new GByteBufferWriter()
   while (!source.isAtEnd()) {
@@ -144,7 +144,7 @@ function compressToZappyBytes(bytes: Uint8Array<ArrayBuffer>, contractions: Zapp
  * @throws Error If str is an invalid Zappy string.
  */
 export function decodeZappyToString(str: string, contractions: ZappyContractionTables): string {
-  let bytes = decodeBase64ToBytes(str)
-  bytes = compressToZappyBytes(bytes, contractions)
-  return bytesToString(bytes)
+  const bytes = decodeBase64ToBytes(str)
+  const decompressedBytes = decompressFromZappyBytes(bytes, contractions)
+  return bytesToString(decompressedBytes)
 }
