@@ -1,13 +1,13 @@
 # Zappy
 
-[![version](https://img.shields.io/badge/version-1.2.2-dodgerblue)](https://github.com/GlitchyByte/zappy/releases/tag/v1.2.2)
-[![spec](https://img.shields.io/badge/spec-1.1.0-palegreen)](https://github.com/GlitchyByte/zappy/blob/v1.2.2/SPEC.md)
+[![version](https://img.shields.io/badge/version-2.0.0-dodgerblue)](https://github.com/GlitchyByte/zappy/releases/tag/v2.0.0)
+[![spec](https://img.shields.io/badge/spec-1.1.0-palegreen)](https://github.com/GlitchyByte/zappy/blob/v2.0.0/SPEC.md)
 
-Lightweight library for compressing and encoding web-related text
+Library for compressing and encoding web-related text
 (json, URLs, UUIDs, etc.) into a URL-safe format for
 efficient transport.
 
-[Read the spec here!](https://github.com/GlitchyByte/zappy/blob/v1.2.2/SPEC.md)
+[Read the spec here!](https://github.com/GlitchyByte/zappy/blob/v2.0.0/SPEC.md)
 
 #### Goals
 
@@ -22,8 +22,13 @@ efficient transport.
 
 #### Notes
 
-To fully take advantage of Zappy, you as a dev should provide
+To fully take advantage of Zappy, you, as a dev, should provide
 `contraction tables` specialized to your payloads.
+
+A good rule of thumb is to include all known identifiers in your json
+payloads (e.g., name, age, username, score, etc.), and common words
+that come up often in your communication (for this example, obvious
+choices for me would be "glichybyte" and "zappy").
 
 Zappy strings should not be stored. They are designed for transport
 where one side encodes before transmitting and the other side decodes
@@ -36,16 +41,21 @@ decoding error conditions.
 ## API
 
 ```ts
-// Constructor.
-Zappy(source: Map<number, string[]> | null, throwOnDecodeErrors = false)
+// Create comtraction tables.
+function createZappyContractionTables(...contractions: Map<number, string[]>[]): ZappyContractionTables
+// Generally you want to pass at least 'zappyDefaultContractions'.
 
-// Methods to encode/decode a base64 string.
-base64StringEncode(str: string): string
-base64StringDecode(str: string): string | null
+// Encode and decode a Base64Url string.
+function encodeStringToBase64(str: string): string
+function decodeBase64ToString(str: string): string
 
-// Methods to encode/decode a Zappy string.
-encode(str: string): string
-decode(str: string): string | null
+// Encode and decode a DeflateRaw-Base64Url string.
+function encodeStringToDeflate(str: string): string
+function decodeDeflateToString(str: string): string
+
+// Encode and decode a Zappy string.
+function encodeStringToZappy(str: string): string
+function decodeZappyToString(str: string): string
 ```
 
 ## How to use
@@ -79,8 +89,9 @@ Define your `contraction tables` like so:
 const contractions = new Map<number, string[]>([
   [1, [
     "glitchybyte",
-    "defenestration",
-    "internationalization"
+    "zappy",
+    "codeUrl",
+    "msg"
   ]]
 ])
 ```
@@ -88,26 +99,31 @@ const contractions = new Map<number, string[]>([
 ### Encode and decode in your code
 
 ```ts
-import { Zappy } from "@glitchybyte/zappy"
+import { 
+  createZappyContractionTables, 
+  decodeZappyToString,
+  encodeStringToBase64,
+  zappyDefaultContractions
+} from "@glitchybyte/zappy"
 
-const zappy = new Zappy(contractions)
+const contractionTables = createZappyContractionTables(zappyDefaultContractions, contractions)
 const json = '{' +
   '"codeUrl":"https://github.com/glitchybyte/zappy",' +
   '"msg":"When I deal with internationalization I think of defenestration."' +
   '}'
-const encoded = zappy.encode(json)
+const encoded = encodeStringToZappy(json, contractionTables)
 console.log(`[${encoded.length}] ${encoded}`)
-//  [90] 6mNvZGVVcmzm4GdpdGh1Yv8EL_ACL3phcHB5521zZ-ZXaGVuIEkgZGVhbCB3
-//       aXRoIPAAIEkgdGhpbmsgb2Yg8AEu6w
+// [116] 6vAB5uBnaXRodWL_BC_wAC_wAufwA-ZXaGVuIEkgZGVhbCB3aXRoIGludGVy
+//       bmF0aW9uYWxpemF0aW9uIEkgdGhpbmsgb2Yg2v7ebmVzdHJhdGlvbi7r
 
-// While vanilla base64 is:
-const base64Encoded = zappy.base64StringEncode(json)
+// While Base64Url is:
+const base64Encoded = encodeStringToBase64(json)
 console.log(`[${base64Encoded.length}] ${base64Encoded}`)
 // [164] eyJjb2RlVXJsIjoiaHR0cHM6Ly9naXRodWIuY29tL2dsaXRjaHlieXRlL3ph
 //       cHB5IiwibXNnIjoiV2hlbiBJIGRlYWwgd2l0aCBpbnRlcm5hdGlvbmFsaXph
 //       dGlvbiBJIHRoaW5rIG9mIGRlZmVuZXN0cmF0aW9uLiJ9
 
-const decoded = zappy.decode(encoded)!
+const decoded = decodeZappyToString(encoded, contractionTables)
 console.log(`[${decoded.length}] ${decoded}`)
 // [123] {"codeUrl":"https://github.com/glitchybyte/zappy","msg":"Whe
 //       n I deal with internationalization I think of defenestration

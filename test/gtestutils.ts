@@ -53,6 +53,7 @@ export function makeFakeJson(knownIdentifiers: string[]): string {
   const makeKnownIdentifier = (): string => {
     return pickRandomArrayItem(knownIdentifiers)!
   }
+
   const makeUnknownIdentifier = (): string => {
     const characters = "abcdefghijklmnopqrstuvwxyz"
     const length = GMath.randomUIntRange(4, 10)
@@ -63,15 +64,17 @@ export function makeFakeJson(knownIdentifiers: string[]): string {
     }
     return str
   }
+
   const makeBoolean = (): string => {
     return GMath.randomBoolean() ? "false" : "true"
   }
+
   const makeNumber = (): string => {
     const characters = "0123456789"
     const isNegative = GMath.randomBoolean(0.1)
     const length = GMath.randomUIntRange(2, 6)
     const hasDecimalPoint = GMath.randomBoolean(0.2)
-    const fractionalLength = GMath.randomUIntRange(1, 3)
+    const fractionalLength = GMath.randomUIntRange(1, 4)
     let str = isNegative ? "-" : ""
     for (let i = 0; i < length; ++i) {
       const index = i == 0 ? GMath.randomUIntRange(1, characters.length) : GMath.randomUInt(characters.length)
@@ -86,6 +89,7 @@ export function makeFakeJson(knownIdentifiers: string[]): string {
     }
     return str
   }
+
   const makeString = (): string => {
     const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 "
     const length = GMath.randomUIntRange(6, 32)
@@ -96,14 +100,17 @@ export function makeFakeJson(knownIdentifiers: string[]): string {
     }
     return str
   }
+
   const makeHex = (): string => {
     const value = GMath.randomUInt(0x01000000)
     const isUppercase = GMath.randomBoolean()
     return "0x" + numberToHexString(value, 1, isUppercase)
   }
+
   const makeUUID = (): string => {
     return crypto.randomUUID()
   }
+
   const makeArray = (): string => {
     const itemCount = GMath.randomUIntRange(3, 20)
     const itemType = GMath.randomUInt(3)
@@ -127,12 +134,13 @@ export function makeFakeJson(knownIdentifiers: string[]): string {
     str += "]"
     return str
   }
+
   const makeObject = (): string => {
     const itemCount = GMath.randomUIntRange(4, 12)
     let str = "{"
     for (let i = 0; i < itemCount; ++i) {
       str += GMath.randomBoolean(0.75) ? `"${makeKnownIdentifier()}":` : `"${makeUnknownIdentifier()}":`
-      const itemType = randomWeightIndex([2, 3, 3, 3, 5, 1, 0.5])
+      const itemType = GMath.randomWeightIndex([2, 3, 3, 3, 5, 1, 0.5])
       switch (itemType) {
         case 0:
           str += makeBoolean()
@@ -165,18 +173,4 @@ export function makeFakeJson(knownIdentifiers: string[]): string {
   }
 
   return makeObject()
-}
-
-function randomWeightIndex(weights: number[]): number {
-  const total = weights.reduce((previousValue, currentValue) => previousValue + currentValue)
-  const r = GMath.random(total)
-  let acc = 0
-  for (let i = 0; i < weights.length; ++i) {
-    acc += weights[i]
-    if (r < acc) {
-      return i
-    }
-  }
-  // Floating point errors go to the last item.
-  return weights[weights.length - 1]
 }

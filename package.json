@@ -1,7 +1,7 @@
 {
   "name": "@glitchybyte/zappy",
   "version": "2.0.0",
-  "description": "Lightweight library for compressing and encoding web-related text (json, URLs, UUIDs, etc.) into a URL-safe format for efficient transport.",
+  "description": "Library for compressing and encoding web-related text (json, URLs, UUIDs, etc.) into a URL-safe format for efficient transport.",
   "license": "Apache-2.0",
   "author": "GlitchyByte",
   "keywords": [
@@ -33,17 +33,18 @@
     "build": "vite build",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:profile": "TEST_PROFILE=true vitest run profile",
-    "bench": "vitest bench --run"
+    "bench": "vitest bench --run",
+    "comparison": "tsx ./test/comparison.ts"
   },
   "dependencies": {
-    "@glitchybyte/dash": "^1.1.0"
+    "@glitchybyte/dash": "^1.2.0"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
-    "@types/node": "^24.0.3",
+    "@types/node": "^24.0.8",
     "@vitest/coverage-v8": "^3.2.4",
     "fs-extra": "^11.3.0",
+    "tsx": "^4.20.3",
     "typescript": "^5.8.3",
     "vite": "^7.0.0",
     "vite-plugin-dts": "^4.5.4",
