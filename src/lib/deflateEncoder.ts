@@ -5,7 +5,7 @@ import { encodeBytesToBase64 } from "./base64Encoder"
 import { GByteBufferWriter, stringToBytes } from "@glitchybyte/dash"
 
 /**
- * Compresses raw bytes into deflate-raw bytes.
+ * Compresses raw bytes into DeflateRaw bytes.
  *
  * @param bytes Bytes to compress.
  */
@@ -28,7 +28,7 @@ export async function compressWithDeflate(bytes: Uint8Array): Promise<Uint8Array
 }
 
 /**
- * Encodes an utf-8 string into a deflate and base64 string.
+ * Encodes an utf-8 string into a DeflateRaw-Base64Url string.
  *
  * @param str Utf-8 string to encode.
  */

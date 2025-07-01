@@ -24,15 +24,12 @@ function base64CharacterTo6Bits(ch: string): number {
 }
 
 /**
- * Decodes a base64 string into raw bytes.
+ * Decodes a Base64Url string into raw bytes.
  *
- * Expects encoding with "-" and "_", and no padding.
- *
- * @param str Base64 string.
+ * @param str Base64Url string.
  * @throws Error If str is an invalid base64 string.
  */
 export function decodeBase64ToBytes(str: string): Uint8Array<ArrayBuffer> {
-  // Base64 decode.
   // We have 4 6-bit bytes. Make 3 bytes out of them.
   const strLength = str.length
   const bytes = new GByteBufferWriter()
@@ -64,11 +61,9 @@ export function decodeBase64ToBytes(str: string): Uint8Array<ArrayBuffer> {
 }
 
 /**
- * Decodes a base64 string into an utf-8 string.
+ * Decodes a Base64Url string into an utf-8 string.
  *
- * Expects encoding with "-" and "_", and no padding.
- *
- * @param str Base64 string.
+ * @param str Base64Url string.
  * @throws Error If str is an invalid base64 string.
  */
 export function decodeBase64ToString(str: string): string {

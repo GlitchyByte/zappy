@@ -4,14 +4,11 @@
 import { GMath, stringToBytes } from "@glitchybyte/dash"
 
 /**
- * Encodes raw bytes into a base64 string.
- *
- * Encodes with "-" and "_", and no padding.
+ * Encodes raw bytes into a Base64Url string.
  *
  * @param bytes Bytes to encode.
  */
 export function encodeBytesToBase64(bytes: Uint8Array): string {
-  // Base64 encode.
   // We have 3 bytes. Make 4 6-bit bytes out of them.
   const bytesLength = bytes.length
   const base64Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
@@ -47,9 +44,7 @@ export function encodeBytesToBase64(bytes: Uint8Array): string {
 }
 
 /**
- * Encodes an utf-8 string into a base64 string.
- *
- * Encodes with "-" and "_", and no padding.
+ * Encodes an utf-8 string into a Base64Url string.
  *
  * @param str Utf-8 string to encode.
  */
