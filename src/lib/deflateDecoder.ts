@@ -18,12 +18,11 @@ export async function decompressWithDeflate(bytes: Uint8Array): Promise<Uint8Arr
   await writer.close()
   const buffer = new GByteBufferWriter()
   while (true) {
-    const { value } = await reader.read()
-    if (value) {
-      buffer.writeBytes(value)
-    } else {
+    const { value, done } = await reader.read()
+    if (done) {
       break
     }
+    buffer.writeBytes(value)
   }
   return buffer.extractBytes()
 }
