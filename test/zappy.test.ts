@@ -3,8 +3,8 @@
 
 import { describe, expect, it } from "vitest"
 import {
-  createZappyContractionTables, decodeZappyToString,
-  encodeStringToBase64, encodeStringToZappy,
+  createZappyContractionTables, decodeZappy2ToString, decodeZappyToString,
+  encodeStringToBase64, encodeStringToZappy, encodeStringToZappy2,
   zappyDefaultContractions
 } from "../src"
 
@@ -293,7 +293,7 @@ describe("Zappy", () => {
       })
     })
 
-    describe("Examples", () => {
+    describe("Samples that found problems", () => {
       const knownIdentifiers = [
         "user", "location", "rank", "score", "target", "color", "size", "origin", "name", "track", "command", "time"
       ]
@@ -301,11 +301,20 @@ describe("Zappy", () => {
         [1, knownIdentifiers]
       ])
       const contractionTables = createZappyContractionTables(zappyDefaultContractions, testContractions)
+
       it("10 digit in UUID but only 9 are compressible in one token", () => {
         const json = '{"track":"0x6A830D","user":1448,"score":"341c9a18-20bf-4ccf-95ef-1d001ebe1de5","origin":"15d759cd-7891-4a62-863c-866465076610"}'
         const encoded = encodeStringToZappy(json, contractionTables)
         expect(encoded).not.toBe(json)
         const decoded = decodeZappyToString(encoded, contractionTables)
+        expect(decoded).toBe(json)
+      })
+
+      it("7 uppercase characters that don't fit in one token", () => {
+        const json = '{"v":"VXDVAPR"}'
+        const encoded = encodeStringToZappy2(json)
+        expect(encoded).not.toBe(json)
+        const decoded = decodeZappy2ToString(encoded)
         expect(decoded).toBe(json)
       })
     })

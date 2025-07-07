@@ -34,7 +34,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "bench": "vitest bench --run",
-    "comparison": "tsx ./test/comparison.ts"
+    "comparison": "tsx ./scripts/comparison.ts"
   },
   "dependencies": {
     "@glitchybyte/dash": "^1.2.0"
