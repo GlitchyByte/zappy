@@ -59,9 +59,9 @@ npm install @glitchybyte/zappy
 
 ```ts
 import {
-  decodeZappyToString,
   encodeStringToBase64,
-  zappyDefaultContractions
+  encodeStringToZappy,
+  decodeZappyToString
 } from "@glitchybyte/zappy"
 
 const json = '{' +
