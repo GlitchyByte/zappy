@@ -1,70 +1,65 @@
 # Spec for nerds
 
-![spec](https://img.shields.io/badge/spec-1.1.0-palegreen)
+![spec](https://img.shields.io/badge/spec-2.0.0-palegreen)
 
-## Each byte:
+### Level 1 instruction
 
-#### bit 7
+#### 1 bit
 
-* 0: Take this byte as ASCII.
-* 1: This is a compressed instruction. ↓
+* 0: Default lookup table<sup>1</sup>. Septet follows.
+* 1: Level 2 instruction. ↓
 
-### Compressed instruction:
+### Level 2 instruction
 
-#### bit 6
+#### 2 bits
 
-* 0: This is a level 1 compressed instruction. ↓
-* 1: This is a level 2 compressed instruction. ↓
+* 00: Repeat. Take 4 bits [0-15 + 1] as repeat count. Take the next septet, get its default lookup, and repeat it.
+* 01: Zappy phrase (uppercase). Take 5 bits [0-31 + 1] as bit `count`.
+  Take `count` bits, and convert this value to an uppercase Zappy string<sup>2</sup>.
+* 10: Zappy phrase (lowercase). Take 5 bits [0-31 + 1] as bit `count`.
+  Take `count` bits, and convert this value to a lowercase Zappy string<sup>2</sup>.
+* 11: Level 3 instruction. ↓
 
-### Level 1 compressed instruction:
+### Level 3 instruction
 
-#### bit 5
+#### 2 bits
 
-* 0: Blob<sup>1</sup>. Take remainder bits (0-4) as byte `count`. Take
-  next `count` bytes as-is.
-* 1: Repeat. Take remainder bits (0-4) as repeat count. Take the next
-  byte as-is is and repeat it.
+* 00: Decimal integer. Take 5 bits [0-31 + 1] as bit `count`.
+  Take `count` bits, and convert this value to a decimal string.
+* 01: Hexadecimal integer (uppercase). Take 5 bits [0-31 + 1] as `count`.
+  Take `count` bits, and convert this value to an uppercase hexadecimal string.
+* 10: Hexadecimal integer (lowercase). Take 5 bits [0-31 + 1] as `count`.
+  Take `count` bits, and convert this value to a lowercase hexadecimal string.
+* 11: Level 4 instruction. ↓
 
-### Level 2 compressed instruction:
+### Level 4 instruction
 
-#### bit 5
+#### 1 bit
 
-* 0: Unsigned integer. ↓
-* 1: Contraction lookup. ↓
+* 0: Blob<sup>3</sup>. Take 4 bits [0-15 + 1] as byte `count`.
+  Take next `count` bytes as-is.
+* 1: Level 5 instruction. ↓
 
-### Unsigned integer:
+### Level 5 instruction
 
-#### bit4
+#### 1 bit
 
-* 0: Decimal integer. Take remainder bits (0-3) as byte count (only 1,
-  2, and 4 are valid values). Take next bytes as UInt8, UInt16, or
-  UInt32<sup>2</sup>.
-* 1: Hexadecimal integer. ↓
+* 0: [NOT IMPLEMENTED YET. This will be included in next version] Known string lookup. Take 6 bits [0-63] as index in known string array, if given.
+* 1: End of data.
 
-### Hexadecimal integer:
+---
 
-#### bit 3
+<sup>1</sup> Default lookup septet (7 bits):
 
-* 0: Uppercase hexadecimal integer. Take remainder bits (0-2) as byte
-  count (only 2 and 4 are valid values). Take next bytes as UInt16 or
-  UInt32<sup>2</sup>.
-* 1: Lowercase hexadecimal integer. Take remainder bits (0-2) as byte
-  count (only 2 and 4 are valid values). Take next bytes as UInt16 or
-  UInt32<sup>2</sup>.
+* 0-94  -> 32-126 ASCII (95 characters)
+* 95-127 -> json common contractions (33 contractions)
 
-### Contraction lookup:
+<sup>2</sup> Zappy strings are base27 strings with a "0" as zero,
+and then using English alphabet from "a" to "z" (or "A" to "Z").
+It compresses all groups of letters of up to length 6,
+and some of length 7, to a number that fits in 32 bits.
 
-#### bit 4
-
-* 0: Fast lookup! Take remainder bits (0-3) as index on table 0.
-* 1: Table lookup. Take remainder bits (0-3) as table id, and next byte
-  as index on that table.
-
-<sup>1</sup> Blobs are not compressed and, in fact, use an extra byte.
+<sup>3</sup> Blobs are not compressed and, in fact, use 10 extra bits.
 They are used mainly for UTF-8 multibyte sequences. The encoder will
-group consecutive multibyte sequences together though.
-
-<sup>2</sup> All UInt storage references are little-endian. Because of
-a JavaScript limitation, UIn32 in this implementation only uses 31 bits.
-This has no effect in the actual compressing capabilities, just that in
-theory it could compress more.
+group consecutive multibyte sequences together though, using only 10
+extra bits for the whole group.

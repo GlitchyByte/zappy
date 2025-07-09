@@ -1,289 +1,277 @@
 // Copyright 2024-2025 GlitchyByte
 // SPDX-License-Identifier: Apache-2.0
 
-import { ZappyContractionTables } from "./zappy"
 import { encodeBytesToBase64 } from "./base64Encoder"
-import { GByteBufferWriter, stringToBytes } from "@glitchybyte/dash"
+import { baseNStringToNumber, bytesToString, GBitBufferWriter, GMath, stringToBytes } from "@glitchybyte/dash"
+import {
+  bytesToSeptet,
+  byteToSeptet,
+  DEFAULT_CONTRACTION_MAX_LENGTH,
+  ZAPPY_LOWERCASE_CHARS,
+  ZAPPY_UPPERCASE_CHARS
+} from "./zappyCommon"
 
-const MAX_DECIMAL = 0x7fffffff
-
-function addContractionToken(compressed: GByteBufferWriter, source: Uint8Array, index: number, contractions: ZappyContractionTables): number {
-  const findLookupIndex = (lookup: Map<number, Uint8Array>, source: Uint8Array, index: number): number | null => {
-    for (const [ lookupIndex, bytes ] of lookup) {
-      if (bytes.length > (source.length - index)) {
-        continue
-      }
-      let found = true
-      for (let i = 0; i < bytes.length; ++i) {
-        if (bytes[i] !== source[index + i]) {
-          found = false
-          break
-        }
-      }
-      if (found) {
-        return lookupIndex
-      }
-    }
-    return null
+function addKnownStrings(compressed: GBitBufferWriter, source: Uint8Array, index: number, knownStrings: string[] | null): number {
+  if (!knownStrings || (knownStrings.length === 0)) {
+    return 0
   }
-
-  for (let tableId = 16; tableId >= 0; --tableId) {
-    const lookup = contractions.get(tableId)
-    if (!lookup) {
-      continue
-    }
-    const lookupIndex = findLookupIndex(lookup, source, index)
-    if (lookupIndex === null) {
-      continue
-    }
-    if (tableId === 0) {
-      const token = 0xe0 | lookupIndex
-      compressed.writeUInt8(token)
-    } else {
-      const token = 0xf0 | (tableId - 1)
-      compressed.writeUInt8(token)
-      compressed.writeUInt8(lookupIndex)
-    }
-    return lookup.get(lookupIndex)!.length
-  }
-  return 0
+  return 0 // TODO: Implement this!
 }
 
-function addRepeatToken(compressed: GByteBufferWriter, source: Uint8Array, index: number): number {
-  const maxRepeatCount = 0x1f
-  let count = 1
-  const value = source[index]
-  while (count < maxRepeatCount) {
+function isValidAscii(byte: number): boolean {
+  return (byte >= 32) && (byte <= 126)
+}
+
+function addBlob(compressed: GBitBufferWriter, source: Uint8Array, index: number): number {
+  // Check for invalid ASCII. Take as-is as a group.
+  const maxBlobSize = GMath.min(0b1_0000, source.length - index)
+  let count = 0
+  while (count < maxBlobSize) {
     const walker = index + count
-    if (walker >= source.length) {
+    const byte = source[walker]
+    if (isValidAscii(byte)) {
       break
     }
+    ++count
+  }
+  if (count === 0) {
+    return 0
+  }
+  compressed.write(6, 0b1_11_11_0)
+  compressed.write(4, count - 1)
+  for (let i = 0; i < count; ++i) {
+    compressed.write(8, source[index + i])
+  }
+  return count
+}
+
+function addRepeat(compressed: GBitBufferWriter, source: Uint8Array, index: number): number {
+  const maxRepeatCount = GMath.min(0b1_0000, source.length - index)
+  const value = source[index]
+  let count = 1
+  while (count < maxRepeatCount) {
+    const walker = index + count
     const byte = source[walker]
     if (value !== byte) {
       break
     }
     ++count
   }
-  if (count < 3) {
+  if (count < 2) {
     return 0
   }
-  const token = 0xa0 | count
-  compressed.writeUInt8(token)
-  compressed.writeUInt8(value)
+  compressed.write(3, 0b1_00)
+  compressed.write(4, count - 1)
+  compressed.write(7, byteToSeptet(value))
   return count
 }
 
-function isDigit(byte: number): boolean {
-  return (byte >= 0x30) && (byte <= 0x39) // [0..9]
-}
-
-function isUppercaseHexDigit(byte: number): boolean {
-  return (byte >= 0x41) && (byte <= 0x46) // [A..F]
-}
-
-function isLowercaseHexDigit(byte: number): boolean {
-  return (byte >= 0x61) && (byte <= 0x66) // [a..f]
-}
-
-function addDecimalToken(compressed: GByteBufferWriter, source: Uint8Array, index: number, count: number) {
-  // FIXME JS BUG: Can't have an unsigned 32bit int, if bit 31 is set JS interprets it as a negative number.
-  //  So we'll only encode numbers up to 31 bits long. Though the problem only shows when decoding, we prevent
-  //  encoding so we don't manifest the bug later.
-  let digits = 0
-  let value = 0
-  while (digits < count) {
-    const byte = source[index + digits]
-    const newValue = (value * 10) + (byte - 0x30)
-    if (newValue > MAX_DECIMAL) {
-      break
-    }
-    value = newValue
-    ++digits
-  }
-  // Minimum encoding size is 2 bytes (token + UInt8). So we do not encode numbers under 100 which are
-  // 2 bytes to start with in ASCII.
-  if (value < 100) {
+function addContraction(compressed: GBitBufferWriter, source: Uint8Array, index: number): number {
+  const count = GMath.min(DEFAULT_CONTRACTION_MAX_LENGTH, source.length - index)
+  if (count <= 1) {
     return 0
   }
-  let byteCount = 1
-  if (value > 0xffff) {
-    byteCount = 4
-  } else if (value > 0xff) {
-    byteCount = 2
-  }
-  const token = 0xc0 | byteCount
-  compressed.writeUInt8(token)
-  switch (byteCount) {
-    case 4:
-      compressed.writeUInt32(value)
-      break
-    case 2:
-      compressed.writeUInt16(value)
-      break
-    default:
-      compressed.writeUInt8(value)
-  }
-  return digits
-}
-
-function addHexadecimalToken(compressed: GByteBufferWriter, source: Uint8Array, index: number, count: number, isUppercase: boolean) {
-  // FIXME JS BUG: Can't have an unsigned 32bit int, if bit 31 is set JS interprets it as a negative number.
-  //  So we'll only encode numbers up to 31 bits long. Though the problem only shows when decoding, we prevent
-  //  encoding so we don't manifest the bug later.
-  let digits = 0
-  let value = 0
-  while (digits < count) {
-    const byte = source[index + digits]
-    let digitValue = 0
-    if (isDigit(byte)) {
-      digitValue = byte - 0x30
-    } else if (isUppercase) {
-      digitValue = byte - 0x37 // 0x0a + (byte - 0x41)
-    } else {
-      digitValue = byte - 0x57 // 0x0a + (byte - 0x61)
-    }
-    const newValue = (value * 0x10) | digitValue
-    if ((newValue & MAX_DECIMAL) !== newValue) {
-      break
-    }
-    value = newValue
-    ++digits
-  }
-  // Minimum encoding size is 3 bytes (token + UInt16). So we do not encode hex numbers under 0x1000 which are
-  // 3 bytes to start with in ASCII.
-  if (value < 0x1000) {
+  const segment = source.subarray(index, index + count)
+  const [septet, bytesUsed] = bytesToSeptet(segment)
+  if (bytesUsed === 0) {
     return 0
   }
-  const byteCount = value > 0xffff ? 4 : 2
-  const token = (isUppercase ? 0xd0 : 0xd8) | byteCount
-  compressed.writeUInt8(token)
-  if (byteCount === 4) {
-    compressed.writeUInt32(value)
-  } else {
-    compressed.writeUInt16(value)
-  }
-  return digits
+  compressed.write(1, 0b0)
+  compressed.write(7, septet)
+  return bytesUsed
 }
 
-function addUnsignedIntegerToken(compressed: GByteBufferWriter, source: Uint8Array, index: number): number {
-  // Collect up to 10 decimal or 8 hex.
-  let count = 1
-  let byte = source[index]
-  let isUppercase = isUppercaseHexDigit(byte)
-  let isHex = isUppercase || isLowercaseHexDigit(byte)
-  while ((isHex && (count < 8)) || (!isHex && (count < 10))) {
-    const walker = index + count
-    if (walker >= source.length) {
-      break
-    }
-    byte = source[walker]
-    if (isDigit(byte)) {
-      ++count
-      continue
-    }
-    if (isHex) {
-      if (isUppercase && isUppercaseHexDigit(byte)) {
-        ++count
-        continue
-      }
-      if (!isUppercase && isLowercaseHexDigit(byte)) {
-        ++count
-        continue
-      }
-      break
-    }
-    if (isUppercaseHexDigit(byte)) {
-      if (count >= 8) {
-        break
-      }
-      isHex = true
-      isUppercase = true
-      ++count
-      continue
-    }
-    if (isLowercaseHexDigit(byte)) {
-      if (count >= 8) {
-        break
-      }
-      isHex = true
-      ++count
-      continue
-    }
-    break
+function addValidAscii(compressed: GBitBufferWriter, source: Uint8Array, index: number): number {
+  const byte = source[index]
+  if (!isValidAscii(byte)) {
+    return 0
   }
-  return isHex ?
-    addHexadecimalToken(compressed, source, index, count, isUppercase) :
-    addDecimalToken(compressed, source, index, count)
-}
-
-function addAsciiToken(compressed: GByteBufferWriter, source: Uint8Array, index: number): number {
-  compressed.writeUInt8(source[index])
+  compressed.write(1, 0b0)
+  compressed.write(7, byteToSeptet(byte))
   return 1
 }
 
-function addBlobToken(compressed: GByteBufferWriter, source: Uint8Array, index: number): number {
-  const maxBlobSize = 0x1f
-  let count = 1
-  while (count < maxBlobSize) {
+// type ByteCollectionType = "decimal" | "hex" | "zappy" | null
+type ByteCollectionType = "d" | "dh" | "h" | "hz" | "z" | null
+function addBaseNCompression(compressed: GBitBufferWriter, source: Uint8Array, index: number): number {
+  // Collect characters until we can compress something.
+  const sourceLength = source.length
+  let stringType: ByteCollectionType = null
+  let isUppercase = false
+  let count = 0
+  collectorLoop: while ((index + count) < sourceLength) {
     const walker = index + count
-    if (walker >= source.length) {
+    const byte = source[walker]
+    const isByteZero = byte === 0x30 // 0
+    const isByteDecimal = (byte >= 0x30) && (byte <= 0x39) // [0..9]
+    const isByteHex = ((byte >= 0x41) && (byte <= 0x46)) || ((byte >= 0x61) && (byte <= 0x66)) // [A..F] || [a..f]
+    const isByteBase26 = ((byte >= 0x41) && (byte <= 0x5a)) || ((byte >= 0x61) && (byte <= 0x7a)) // [A..Z] || [a..z]
+    const isByteUppercase = (byte & 0b0010_0000) === 0
+    const byteType: ByteCollectionType = isByteDecimal ? "d" : isByteHex ? "h" : isByteBase26 ? "z" : null
+    if (byteType === null) {
+      // We don't know what this is.
       break
     }
-    const byte = source[walker]
-    if ((byte & 0x80) === 0) {
+    if ((count === 0) && isByteZero) {
+      // We don't take zeroes on the left.
       break
+    }
+    if (stringType === null) {
+      stringType = byteType
+      if ((stringType === "h") || (stringType === "z")) {
+        isUppercase = isByteUppercase
+      }
+    }
+    if (isByteDecimal) {
+      if (stringType.at(-1) === "z") {
+        break
+      }
+      if (stringType[0] === "h") {
+        stringType = "dh"
+      }
+    } else if (isByteHex) {
+      if (stringType === "d") {
+        stringType = "dh"
+        isUppercase = isByteUppercase
+      } else if (isUppercase !== isByteUppercase) {
+        break
+      }
+    } else {
+      if ((stringType[0] === "d") || (isUppercase !== isByteUppercase)) {
+        break
+      } else if (stringType === "h") {
+        stringType = "hz"
+      }
     }
     ++count
+    switch (stringType.at(-1)) {
+      case "d":
+        if (count >= 10) {
+          break collectorLoop
+        }
+        break
+      case "h":
+        if (count >= 8) {
+          break collectorLoop
+        }
+        break
+      case "z":
+        if (count >= 7) {
+          break collectorLoop
+        }
+        break
+      default:
+        throw new Error("Internal error: Unknown baseN type")
+    }
   }
-  const token = 0x80 | count
-  compressed.writeUInt8(token)
-  // const start = compressed.length
-  // compressed.setLength(start + count)
-  for (let i = 0; i < count; ++i) {
-    // compressed.setUInt8(start + i, source[index + i])
-    compressed.writeUInt8(source[index + i])
+  if (count < 2) {
+    return 0
   }
-  return count
+  let valueByteCount: number
+  let str: string
+  let value: number
+  let bitCount: number
+  switch (stringType!.at(-1)) {
+    case "d":
+      valueByteCount = GMath.min(10, count)
+      str = bytesToString(source.subarray(index, index + valueByteCount))
+      value = parseInt(str, 10)
+      if (value > 0xffffffff) {
+        valueByteCount = 9
+        str = bytesToString(source.subarray(index, index + 9))
+        value = parseInt(str, 10)
+      }
+      bitCount = 32 - Math.clz32(value)
+      compressed.write(5, 0b1_11_00)
+      compressed.write(5, bitCount - 1)
+      compressed.write(bitCount, value)
+      return valueByteCount
+    case "h":
+      valueByteCount = GMath.min(8, count)
+      str = bytesToString(source.subarray(index, index + valueByteCount))
+      value = parseInt(str, 16)
+      bitCount = 32 - Math.clz32(value)
+      compressed.write(5, isUppercase ? 0b1_11_01 : 0b1_11_10)
+      compressed.write(5, bitCount - 1)
+      compressed.write(bitCount, value)
+      return valueByteCount
+    case "z":
+      if (count < 3) {
+        // Benefit starts at 3 characters.
+        return 0
+      }
+      valueByteCount = GMath.min(7, count)
+      while (true) {
+        str = bytesToString(source.subarray(index, index + valueByteCount))
+        if ((str.length < 7) ||
+          (isUppercase && (str <= "ENQWLTJ")) ||
+          (!isUppercase && (str <= "enqwltj"))
+        ) { // "enqwltj" is max 7 characters that fit in 32 bits.
+          break
+        }
+        --valueByteCount
+      }
+      value = baseNStringToNumber(str, isUppercase ? ZAPPY_UPPERCASE_CHARS : ZAPPY_LOWERCASE_CHARS)
+      bitCount = 32 - Math.clz32(value)
+      compressed.write(3, isUppercase ? 0b1_01 : 0b1_10)
+      compressed.write(5, bitCount - 1)
+      compressed.write(bitCount, value)
+      return valueByteCount
+    default:
+      throw new Error("Internal error: Unknown baseN type")
+  }
 }
 
-function addNextToken(compressed: GByteBufferWriter, source: Uint8Array, index: number, contractions: ZappyContractionTables): number {
-  {
-    // Contraction.
-    const used = addContractionToken(compressed, source, index, contractions)
-    if (used > 0) {
-      return used
-    }
+function addNextInstruction(compressed: GBitBufferWriter, source: Uint8Array, index: number, knownStrings: string[] | null): number {
+  let used: number
+  // Known strings.
+  used = addKnownStrings(compressed, source, index, knownStrings)
+  if (used > 0) {
+    return used
   }
-  {
-    // Repeated.
-    const used = addRepeatToken(compressed, source, index)
-    if (used > 0) {
-      return used
-    }
+  // Blob.
+  used = addBlob(compressed, source, index)
+  if (used > 0) {
+    return used
   }
-  const byte = source[index]
-  // Check for (0..9] || [A..F] || [a..f]
-  if (((byte > 0x30) && (byte <= 0x39)) || ((byte >= 0x41) && (byte <= 0x46)) || ((byte >= 0x61) && (byte <= 0x66))) {
-    // Unsigned integer.
-    const used = addUnsignedIntegerToken(compressed, source, index)
-    if (used > 0) {
-      return used
-    }
+  // Contraction.
+  used = addContraction(compressed, source, index)
+  if (used > 0) {
+    return used
   }
-  if ((byte & 0x80) === 0) {
-    // ASCII. Take as-is.
-    return addAsciiToken(compressed, source, index)
+  // BaseN compression: UInt, Hex, Zappy.
+  used = addBaseNCompression(compressed, source, index)
+  if (used > 0) {
+    return used
   }
-  // Non-ASCII. Take as-is as a group.
-  return addBlobToken(compressed, source, index)
+  // Repeated.
+  used = addRepeat(compressed, source, index)
+  if (used > 0) {
+    return used
+  }
+  used = addValidAscii(compressed, source, index)
+  if (used > 0) {
+    return used
+  }
+  throw new Error("Internal error: Bits are escaping!")
 }
 
-function compressToZappyBytes(source: Uint8Array, contractions: ZappyContractionTables): Uint8Array {
-  const compressed = new GByteBufferWriter()
+function compressToZappyBytes(source: Uint8Array, knownStrings: string[] | null): Uint8Array {
+  const compressed = new GBitBufferWriter()
   let index = 0
+  // console.log("-".repeat(64))
   while (index < source.length) {
-    index += addNextToken(compressed, source, index, contractions)
+    // const ss = index
+    // const cs = compressed.bitCount
+
+    index += addNextInstruction(compressed, source, index, knownStrings)
+
+    // const se = index
+    // const ce = compressed.bitCount
+    // const str = bytesToString(source.subarray(ss, se))
+    // console.log(`enc: ${(se - ss) * 8} => ${ce - cs}`, str)
   }
+  compressed.write(6, 0b1_11_11_1_1) // End of data.
   return compressed.extractBytes()
 }
 
@@ -291,10 +279,13 @@ function compressToZappyBytes(source: Uint8Array, contractions: ZappyContraction
  * Encodes an utf-8 string into a Zappy string.
  *
  * @param str Utf-8 string to encode.
- * @param contractions Contractions for aiding compression.
+ * @param knownStrings Known strings array for aiding compression.
  */
-export function encodeStringToZappy(str: string, contractions: ZappyContractionTables): string {
+export function encodeStringToZappy(str: string, knownStrings: string[] | null = null): string {
+  if (str.length === 0) {
+    return ""
+  }
   let bytes = stringToBytes(str)
-  bytes = compressToZappyBytes(bytes, contractions)
+  bytes = compressToZappyBytes(bytes, knownStrings)
   return encodeBytesToBase64(bytes)
 }

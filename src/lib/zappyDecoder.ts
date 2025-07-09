@@ -1,137 +1,148 @@
 // Copyright 2024-2025 GlitchyByte
 // SPDX-License-Identifier: Apache-2.0
 
-import { ZappyContractionTables } from "./zappy"
 import { decodeBase64ToBytes } from "./base64Decoder"
 import {
   bytesToString,
-  GByteBufferReader,
+  GBitBufferReader,
   GByteBufferWriter,
+  numberToBaseNString,
   numberToHexString,
   stringToBytes
 } from "@glitchybyte/dash"
+import { septetToBytes, ZAPPY_LOWERCASE_CHARS, ZAPPY_UPPERCASE_CHARS } from "./zappyCommon"
 
-function resolveAsciiToken(decompressed: GByteBufferWriter, byte: number): void {
-  decompressed.writeUInt8(byte)
-}
-
-function resolveBlobToken(decompressed: GByteBufferWriter, byte: number, source: GByteBufferReader): void {
-  const count = byte & 0x1f
-  for (let i = 0; i < count; ++i) {
-    const b = source.readUInt8()
-    decompressed.writeUInt8(b)
-  }
-}
-
-function resolveRepeatToken(decompressed: GByteBufferWriter, byte: number, source: GByteBufferReader): void {
-  const count = byte & 0x1f
-  const b = source.readUInt8()
-  for (let i = 0; i < count; ++i) {
-    decompressed.writeUInt8(b)
-  }
-}
-
-function resolveDecimalToken(decompressed: GByteBufferWriter, byte: number, source: GByteBufferReader): void {
-  const count = byte & 0x0f
-  let value: number
-  switch (count) {
-    case 1:
-      value = source.readUInt8()
-      break
-    case 2:
-      value = source.readUInt16()
-      break
-    case 4:
-      value = source.readUInt32()
-      break
-    default:
-      throw new Error(`Invalid byte count: ${count}`)
-  }
-  const digits = value.toString()
-  for (const ch of digits) {
-    decompressed.writeUInt8(ch.charCodeAt(0))
-  }
-}
-
-function resolveHexadecimalToken(decompressed: GByteBufferWriter, byte: number, source: GByteBufferReader, isUppercase: boolean): void {
-  const count = byte & 0x07
-  let value: number
-  switch (count) {
-    case 2:
-      value = source.readUInt16()
-      break
-    case 4:
-      value = source.readUInt32()
-      break
-    default:
-      throw new Error(`Invalid byte count: ${count}`)
-  }
-  const digits = stringToBytes(numberToHexString(value, 1, isUppercase)) //numberToHexBytes(value, isUppercase)
-  decompressed.writeBytes(digits)
-}
-
-function resolveContractionToken(decompressed: GByteBufferWriter, byte: number, source: GByteBufferReader, contractions: ZappyContractionTables): void {
-  let tableId: number
-  let lookupIndex: number
-  if ((byte & 0x10) === 0) {
-    // Fast lookup!
-    tableId = 0
-    lookupIndex = byte & 0x0f
-  } else {
-    tableId = (byte & 0x0f) + 1
-    lookupIndex = source.readUInt8()
-  }
-  const lookup = contractions.get(tableId)
-  if (!lookup) {
-    throw new Error(`No contractions found [tableId: ${tableId}]`)
-  }
-  const bytes = lookup.get(lookupIndex)
-  if (!bytes) {
-    throw new Error(`Contraction lookup index [${tableId}]:${lookupIndex} not found!`)
+function resolveLookup(decompressed: GByteBufferWriter, source: GBitBufferReader): void {
+  const septet = source.read(7)
+  const bytes = septetToBytes(septet)
+  if (typeof bytes === "number") {
+    decompressed.writeUInt8(bytes)
+    return
   }
   decompressed.writeBytes(bytes)
 }
 
-function resolveNextToken(decompressed: GByteBufferWriter, byte: number, source: GByteBufferReader, contractions: ZappyContractionTables): void {
-  if ((byte & 0x80) === 0) {
-    // ASCII character. Take as-is.
-    resolveAsciiToken(decompressed, byte)
-    return
+function resolveBlob(decompressed: GByteBufferWriter, source: GBitBufferReader): void {
+  const count = source.read(4) + 1
+  for (let i = 0; i < count; ++i) {
+    const byte = source.read(8)
+    decompressed.writeUInt8(byte)
   }
-  if ((byte & 0x40) === 0) {
-    // Level 1 compressed instruction.
-    if ((byte & 0x20) === 0) {
-      // Blob. Take as-is as a group.
-      resolveBlobToken(decompressed, byte, source)
-      return
-    }
-    // Repeated character.
-    resolveRepeatToken(decompressed, byte, source)
-    return
-  }
-  // Level 2 compressed instruction.
-  if ((byte & 0x20) === 0) {
-    // Unsigned integer.
-    if ((byte & 0x10) === 0) {
-      // Decimal integer.
-      resolveDecimalToken(decompressed, byte, source)
-      return
-    }
-    // Hexadecimal integer.
-    const isUppercase = (byte & 0x08) === 0
-    resolveHexadecimalToken(decompressed, byte, source, isUppercase)
-    return
-  }
-  // Contraction lookup.
-  resolveContractionToken(decompressed, byte, source, contractions)
 }
 
-function decompressFromZappyBytes(bytes: Uint8Array<ArrayBuffer>, contractions: ZappyContractionTables): Uint8Array {
-  const source = new GByteBufferReader(bytes.buffer)
+function resolveRepeat(decompressed: GByteBufferWriter, source: GBitBufferReader): void {
+  const count = source.read(4) + 1
+  const septet = source.read(7)
+  const bytes = septetToBytes(septet)
+  if (typeof bytes !== "number") {
+    throw new Error("Invalid repeat septet")
+  }
+  for (let i = 0; i < count; ++i) {
+    decompressed.writeUInt8(bytes)
+  }
+}
+
+function resolveDecimal(decompressed: GByteBufferWriter, source: GBitBufferReader): void {
+  const bitCount = source.read(5) + 1
+  const value = source.read(bitCount)
+  const digits = stringToBytes(value.toString())
+  decompressed.writeBytes(digits)
+}
+
+function resolveHexadecimal(decompressed: GByteBufferWriter, source: GBitBufferReader, uppercase: boolean): void {
+  const bitCount = source.read(5) + 1
+  const value = source.read(bitCount)
+  const digits = stringToBytes(numberToHexString(value, 1, uppercase))
+  decompressed.writeBytes(digits)
+}
+
+function resolveZappy(decompressed: GByteBufferWriter, source: GBitBufferReader, uppercase: boolean): void {
+  const bitCount = source.read(5) + 1
+  const value = source.read(bitCount)
+  const digits = stringToBytes(numberToBaseNString(value, uppercase ? ZAPPY_UPPERCASE_CHARS : ZAPPY_LOWERCASE_CHARS))
+  decompressed.writeBytes(digits)
+}
+
+function resolveLevel4Instruction(decompressed: GByteBufferWriter, source: GBitBufferReader): boolean {
+  // Level 4 instruction.
+  const level4 = source.read(1)
+  switch (level4) {
+    case 0:
+      resolveBlob(decompressed, source)
+      return true
+    case 1:
+    default:
+      return false
+  }
+}
+
+function resolveLevel3Instruction(decompressed: GByteBufferWriter, source: GBitBufferReader): boolean {
+  // Level 3 instruction.
+  const level3 = source.read(2)
+  switch (level3) {
+    case 0b00:
+      resolveDecimal(decompressed, source)
+      return true
+    case 0b01:
+      resolveHexadecimal(decompressed, source, true)
+      return true
+    case 0b10:
+      resolveHexadecimal(decompressed, source, false)
+      return true
+    case 0b11:
+    default:
+      return resolveLevel4Instruction(decompressed, source)
+  }
+}
+
+function resolveLevel2Instruction(decompressed: GByteBufferWriter, source: GBitBufferReader): boolean {
+  // Level 2 instruction.
+  const level2 = source.read(2)
+  switch (level2) {
+    case 0b00:
+      resolveRepeat(decompressed, source)
+      return true
+    case 0b01:
+      resolveZappy(decompressed, source, true)
+      return true
+    case 0b10:
+      resolveZappy(decompressed, source, false)
+      return true
+    case 0b11:
+    default:
+      return resolveLevel3Instruction(decompressed, source)
+  }
+}
+
+function resolveLevel1Instruction(decompressed: GByteBufferWriter, source: GBitBufferReader): boolean {
+  // Level 1 instruction.
+  const level1 = source.read(1)
+  switch (level1) {
+    case 0:
+      resolveLookup(decompressed, source)
+      return true
+    case 1:
+    default:
+      return resolveLevel2Instruction(decompressed, source)
+  }
+}
+
+function decompressFromZappyBytes(bytes: Uint8Array<ArrayBuffer>, knownStrings: string[] | null): Uint8Array {
+  const source = new GBitBufferReader(bytes.buffer)
   const decompressed = new GByteBufferWriter()
-  while (!source.isAtEnd()) {
-    const byte = source.readUInt8()
-    resolveNextToken(decompressed, byte, source, contractions)
+  // console.log("-".repeat(64))
+  while (true) {
+    // const ss = source.position
+    // const ds = decompressed.size
+
+    if (!resolveLevel1Instruction(decompressed, source)) {
+      break
+    }
+
+    // const se = source.position
+    // const de = decompressed.size
+    // const str = bytesToString(decompressed.extractBytes().subarray(ds, de))
+    // console.log(`dec: ${se - ss} => ${(de - ds) * 8}`, str)
   }
   return decompressed.extractBytes()
 }
@@ -140,11 +151,14 @@ function decompressFromZappyBytes(bytes: Uint8Array<ArrayBuffer>, contractions: 
  * Decodes a Zappy string into an utf-8 string.
  *
  * @param str Zappy string.
- * @param contractions Contractions for aiding compression.
+ * @param knownStrings Known strings array for aiding compression.
  * @throws Error If str is an invalid Zappy string.
  */
-export function decodeZappyToString(str: string, contractions: ZappyContractionTables): string {
+export function decodeZappyToString(str: string, knownStrings: string[] | null = null): string {
+  if (str.length === 0) {
+    return ""
+  }
   const bytes = decodeBase64ToBytes(str)
-  const decompressedBytes = decompressFromZappyBytes(bytes, contractions)
+  const decompressedBytes = decompressFromZappyBytes(bytes, knownStrings)
   return bytesToString(decompressedBytes)
 }

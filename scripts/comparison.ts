@@ -3,31 +3,16 @@
 
 import { styleText } from "node:util"
 import { baseNStringToNumber, numberToBaseNString } from "@glitchybyte/dash"
-// @ts-ignore
-import { loadLinesFromFile } from "./gtestutils"
-import {
-  createZappyContractionTables,
-  decodeZappy2ToString,
-  encodeStringToBase64,
-  encodeStringToDeflate,
-  encodeStringToZappy,
-  encodeStringToZappy2,
-  zappyDefaultContractions
-} from "../src"
-import { ZAPPY_LOWERCASE_CHARS, ZAPPY_UPPERCASE_CHARS } from "../src/lib/zappy2"
+import { decodeZappyToString, encodeStringToBase64, encodeStringToDeflate, encodeStringToZappy } from "../src"
+import { ZAPPY_LOWERCASE_CHARS, ZAPPY_UPPERCASE_CHARS } from "../src/lib/zappyCommon"
 
-const contractions = new Map<number, string[]>([
-  [1, [
-    "glitchybyte",
-    "zappy",
-    "codeUrl",
-    "msg"
-  ]]
-])
-const contractionTables = createZappyContractionTables(zappyDefaultContractions, contractions)
-const json1 = '{"codeUrl":"https://github.com/glitchybyte/zappy✌️","msg":"When I 😭 deal with internationalization I think of defenestration."}'
-const json2 = '{"a":"ababcababcd"}'
-const json3 = loadLinesFromFile("sample1.json")[0]
+const json1 = '{"codeUrl":"https://github.com/glitchybyte/zappy","msg":"When I deal with internationalization I think of defenestration."}'
+const json2 = '{"a":"ababcababcd","s":"✌️"}'
+const json3 =
+  '{"widget":{"debug":"on","window":{"title":"Sample Konfabulator Widget","name":"main_window","width":500,"height":5' +
+  '00},"image":{"src":"Images/Sun.png","name":"sun1","hOffset":250,"vOffset":250,"alignment":"center"},"text":{"data"' +
+  ':"Click Here","size":36,"style":"bold","name":"text1","hOffset":250,"vOffset":100,"alignment":"center","onMouseUp"' +
+  ':"sun1.opacity = (sun1.opacity / 100) * 90;"}}}'
 
 function payloadSummary(label: string, payload: string, isOriginal: boolean = false): string {
   const labelStr = styleText("white", label.padStart(9))
@@ -37,16 +22,14 @@ function payloadSummary(label: string, payload: string, isOriginal: boolean = fa
 }
 
 async function printComparison(payload: string): Promise<void> {
+  const zappy = encodeStringToZappy(payload)
   const str =
     payloadSummary("original", payload, true) + "\n" +
     payloadSummary("base64", encodeStringToBase64(payload)) + "\n" +
     payloadSummary("deflate", await encodeStringToDeflate(payload)) + "\n" +
-    payloadSummary("zappy", encodeStringToZappy(payload, contractionTables)) + "\n" +
-    // payloadSummary("zappy2", encodeStringToZappy2(payload)) + "\n" +
-    payloadSummary("zappy3", encodeStringToZappy2(payload))
+    payloadSummary("zappy", zappy) + "\n" +
+    payloadSummary("dezapped", decodeZappyToString(zappy), true)
   console.log(str)
-  const zappy = encodeStringToZappy2(payload)
-  console.log(`dezapped = ${decodeZappy2ToString(zappy)}`)
 }
 
 await printComparison(json1)
@@ -54,14 +37,6 @@ console.log()
 await printComparison(json2)
 console.log()
 await printComparison(json3)
-
-// const BASE26_CHARS = "abcdefghijklmnopqrstuvwxyz"
-//
-// // console.log(base26ToNumber("userid").toString(16))
-// // console.log("      ff [1]", numberToBase26(parseInt("00", 16)), numberToBase26(parseInt("ff", 16)))
-// // console.log("    ffff [2]", numberToBase26(parseInt("0100", 16)), numberToBase26(parseInt("ffff", 16)))
-// // console.log("  ffffff [3]", numberToBase26(parseInt("010000", 16)), numberToBase26(parseInt("ffffff", 16)))
-// // console.log("ffffffff [4]", numberToBase26(parseInt("01000000", 16)), numberToBase26(parseInt("ffffffff", 16)))
 
 // for (let i = 10; i < 32; ++i) {
 //   const strLow = "1".padEnd(i, "0")
@@ -76,7 +51,6 @@ await printComparison(json3)
 //   )
 // }
 
-// ey - zz
 // gytisyx - enqwltj
 // const str = "is32VXDVAPR4gPtCk "
 // const original = baseNStringToNumber(str, ZAPPY_UPPERCASE_CHARS)

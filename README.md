@@ -1,49 +1,42 @@
 # Zappy
 
-[![version](https://img.shields.io/badge/version-2.0.0-dodgerblue)](https://github.com/GlitchyByte/zappy/releases/tag/v2.0.0)
-[![spec](https://img.shields.io/badge/spec-1.1.0-palegreen)](https://github.com/GlitchyByte/zappy/blob/v2.0.0/SPEC.md)
+[![version](https://img.shields.io/badge/version-2.1.0-dodgerblue)](https://github.com/GlitchyByte/zappy/releases/tag/v2.1.0)
+[![spec](https://img.shields.io/badge/spec-2.0.0-palegreen)](https://github.com/GlitchyByte/zappy/blob/v2.1.0/SPEC.md)
 
-Library for compressing and encoding web-related text
-(json, URLs, UUIDs, etc.) into a URL-safe format for
-efficient transport.
+Library for compressing and encoding JSON payloads into Base64Url
+for efficient transport.
 
-[Read the spec here!](https://github.com/GlitchyByte/zappy/blob/v2.0.0/SPEC.md)
+[Read the spec here!](https://github.com/GlitchyByte/zappy/blob/v2.1.0/SPEC.md)
 
 #### Goals
 
-* Capable of encoding any valid utf-8 string.
+* Capable of encoding any valid utf-8 json string.
 * Transportable as URL-safe plain text.
-* Produce smaller encoded string than vanilla base64 on ASCII payloads.
+* Produce smaller encoded string than vanilla base64.
 * Fast encoding and decoding.
 
 #### Non-Goals
 
 * Encryption. This ain't it. It's obfuscation at best.
+* Compressing generic text. Though it may work, Zappy is designed for json.
 
 #### Notes
 
-To fully take advantage of Zappy, you, as a dev, should provide
-`contraction tables` specialized to your payloads.
-
-A good rule of thumb is to include all known identifiers in your json
-payloads (e.g., name, age, username, score, etc.), and common words
-that come up often in your communication (for this example, obvious
-choices for me would be "glichybyte" and "zappy").
+For non-trivial json payloads, testing has shown the resulting Zappy
+string is **smaller than the original** json string! This wasn't a goal,
+but it is a satisfying result and worth mentioning.
 
 Zappy strings should not be stored. They are designed for transport
 where one side encodes before transmitting and the other side decodes
-after receiving. If the `contraction tables` change between encoding
-and decoding, it's very possible the output will not be the same or
-even invalid. Keep this in mind when decoding and handle these cases
-accordingly. That is, always sanitize your (decoded) output and handle
-decoding error conditions.
+after receiving. If the spec changes between encoding and decoding,
+the result will not be the original string.
 
 ## API
 
 ```ts
-// Create comtraction tables.
-function createZappyContractionTables(...contractions: Map<number, string[]>[]): ZappyContractionTables
-// Generally you want to pass at least 'zappyDefaultContractions'.
+// Encode and decode a Zappy string.
+function encodeStringToZappy(str: string): string
+function decodeZappyToString(str: string): string
 
 // Encode and decode a Base64Url string.
 function encodeStringToBase64(str: string): string
@@ -52,10 +45,6 @@ function decodeBase64ToString(str: string): string
 // Encode and decode a DeflateRaw-Base64Url string.
 function encodeStringToDeflate(str: string): string
 function decodeDeflateToString(str: string): string
-
-// Encode and decode a Zappy string.
-function encodeStringToZappy(str: string): string
-function decodeZappyToString(str: string): string
 ```
 
 ## How to use
@@ -66,55 +55,23 @@ function decodeZappyToString(str: string): string
 npm install @glitchybyte/zappy
 ```
 
-### Define contraction tables
-
-There are 17 `contraction tables` available for use [0..16].
-
-Table 0 is called the *fast lookup table*, it gets the best compression
-gains, but only 16 entries are permitted. Entries in table 0 can have
-a minimum of 2 characters (or 2 bytes when converted to UTF-8) and
-still have a gain.
-
-Tables 1-16 allow 256 entries each. Entries can have a minimum of 3
-characters (or 3 bytes when converted to UTF-8).
-
-Developer defined `contraction tables` are overlaid onto
-[default tables](https://github.com/GlitchyByte/zappy/blob/main/src/main/zappy-default-contractions.ts).
-There is a default table 0 specialized in json, and a default
-table 16 with common strings.
-
-Define your `contraction tables` like so:
-
-```ts
-const contractions = new Map<number, string[]>([
-  [1, [
-    "glitchybyte",
-    "zappy",
-    "codeUrl",
-    "msg"
-  ]]
-])
-```
-
 ### Encode and decode in your code
 
 ```ts
-import { 
-  createZappyContractionTables, 
+import {
   decodeZappyToString,
   encodeStringToBase64,
   zappyDefaultContractions
 } from "@glitchybyte/zappy"
 
-const contractionTables = createZappyContractionTables(zappyDefaultContractions, contractions)
 const json = '{' +
   '"codeUrl":"https://github.com/glitchybyte/zappy",' +
   '"msg":"When I deal with internationalization I think of defenestration."' +
   '}'
-const encoded = encodeStringToZappy(json, contractionTables)
+const encoded = encodeStringToZappy(json)
 console.log(`[${encoded.length}] ${encoded}`)
-// [116] 6vAB5uBnaXRodWL_BC_wAC_wAufwA-ZXaGVuIEkgZGVhbCB3aXRoIGludGVy
-//       bmF0aW9uYWxpemF0aW9uIEkgdGhpbmsgb2Yg2v7ebmVzdHJhdGlvbi7r
+// [118] dNCI6JqpJjK8bWS7cjew_azBuwOvlztCH6-mpWznmzhrKb5l10AKQDQoPgAa
+//       XBCoA24Kh7e3aIAmcNuIXjFk4AKQDXpLESAE9GAN7BrqORuRrW4nTg52_A
 
 // While Base64Url is:
 const base64Encoded = encodeStringToBase64(json)
@@ -123,7 +80,7 @@ console.log(`[${base64Encoded.length}] ${base64Encoded}`)
 //       cHB5IiwibXNnIjoiV2hlbiBJIGRlYWwgd2l0aCBpbnRlcm5hdGlvbmFsaXph
 //       dGlvbiBJIHRoaW5rIG9mIGRlZmVuZXN0cmF0aW9uLiJ9
 
-const decoded = decodeZappyToString(encoded, contractionTables)
+const decoded = decodeZappyToString(encoded)
 console.log(`[${decoded.length}] ${decoded}`)
 // [123] {"codeUrl":"https://github.com/glitchybyte/zappy","msg":"Whe
 //       n I deal with internationalization I think of defenestration

@@ -1,7 +1,7 @@
 // Copyright 2024-2025 GlitchyByte
 // SPDX-License-Identifier: Apache-2.0
 
-import { baseNStringToNumber, GMath, numberToBaseNString, stringToBytes } from "@glitchybyte/dash"
+import { GMath, stringToBytes } from "@glitchybyte/dash"
 
 const defaultContractions = [
   // Common values.
@@ -66,7 +66,7 @@ const hashedBytesToSeptetMap = new Map<number, number>(
   defaultContractions.map((value, index) => [fnv1a(stringToBytes(value)), 95 + index])
 )
 
-// TODO: Can we bake this?
+// TODO: ^^^^ See about baking the above in a post-install script ^^^^
 
 export function septetToBytes(septet: number): number | Uint8Array {
   //  0-94  -> 32-126 ASCII (95 characters)
@@ -75,10 +75,6 @@ export function septetToBytes(septet: number): number | Uint8Array {
     return septet + 32
   }
   return septetToBytesMap.get(septet)!
-}
-
-export function isValidAscii(byte: number): boolean {
-  return (byte >= 32) && (byte <= 126)
 }
 
 export function byteToSeptet(byte: number): number {
