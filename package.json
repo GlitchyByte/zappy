@@ -1,6 +1,6 @@
 {
   "name": "@glitchybyte/zappy",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "Library for compressing and encoding JSON payloads into Base64Url for efficient transport.",
   "license": "Apache-2.0",
   "author": "GlitchyByte",

@@ -1,12 +1,12 @@
 # Zappy
 
-[![version](https://img.shields.io/badge/version-2.1.0-dodgerblue)](https://github.com/GlitchyByte/zappy/releases/tag/v2.1.0)
-[![spec](https://img.shields.io/badge/spec-2.0.0-palegreen)](https://github.com/GlitchyByte/zappy/blob/v2.1.0/SPEC.md)
+[![version](https://img.shields.io/badge/version-3.0.0-dodgerblue)](https://github.com/GlitchyByte/zappy/releases/tag/v3.0.0)
+[![spec](https://img.shields.io/badge/spec-2.0.0-palegreen)](https://github.com/GlitchyByte/zappy/blob/v3.0.0/SPEC.md)
 
 Library for compressing and encoding JSON payloads into Base64Url
 for efficient transport.
 
-[Read the spec here!](https://github.com/GlitchyByte/zappy/blob/v2.1.0/SPEC.md)
+[Read the spec here!](https://github.com/GlitchyByte/zappy/blob/v3.0.0/SPEC.md)
 
 #### Goals
 
